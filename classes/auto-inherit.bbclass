@@ -27,10 +27,11 @@
 ## For convinience several premade function can be found at the bottom
 ## of this file
 
+AUTO_INHERIT_CONF ?= ""
 
 ## Example:
 ## inherit class foo on all recipe whcih depend on recipe BAR and are licensed under any GPL-variant
-AUTO_INHERIT_CONF = "BBClass=python-speedups;props=[auto_inherit_is_at_path(d,'meta-buildutils/recipes-foo/',False)]"
+## AUTO_INHERIT_CONF = "BBClass=python-speedups;props=[auto_inherit_is_at_path(d,'meta-buildutils/recipes-foo/',False)]"
 
 python __anonymous () {
     import os
