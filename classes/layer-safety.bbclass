@@ -13,6 +13,11 @@ LAYER_SANITY_PROT_VARS ?= "\
                             EXTRA_OEMAKE.* \
                             ALTERNATIVE_PRIORITY.* \
                         "
+## Futhermore you can 'protect' files from being overloaded
+## by any bbappend
+## Just place the filename (with relative path if needed)
+## in the following space separated list
+LAYER_SANITY_PROT_FILES ?= "defconfig"
 
 def prep_clean_datasmart(d):
     import bb.data_smart
@@ -40,8 +45,8 @@ python do_layer_safety() {
     lvl_bef = logging.getLogger("BitBake").getEffectiveLevel()
     logging.getLogger("BitBake").setLevel(logging.CRITICAL)
 
+    ## Check for variables
     findings = []
-    keys = []
     base_d = prep_clean_datasmart(d)
     ConfHandler.include_single_file(None, base_file, 1, base_d, None)
     whitelist_keys = ["_data", "_depends"]
@@ -59,8 +64,21 @@ python do_layer_safety() {
                 if old_var != new_var:
                     findings.append("Value {} changed from '{}' to '{}' by one of the following appends {}".format(\
                                     k, old_var, new_var, sorted(appends)))
-    
     logging.getLogger("BitBake").setLevel(lvl_bef)
+
+    ## Check for files
+    lookup_paths = [x for x in d.getVar("FILESEXTRAPATHS").split(":") if x]
+    lookup_paths += [x for x in d.getVar("FILESPATH").split(":") if x]
+    lookup_paths = list(set(sorted(lookup_paths)))
+    for item in [x for x in d.getVar("LAYER_SANITY_PROT_FILES").split(" ") if x]:
+        hit_count = 0
+        for path in lookup_paths:
+            if os.path.exists(os.path.join(path, item)):
+                hit_count += 1
+        if hit_count > 1:
+            findings.append("File '{}' is overloaded by at least one of the following appends {}".format(item, sorted(appends)))
+    
+    ## Show results
     findings = list(set(findings))
     for item in findings:
         bb.error(item)

@@ -152,6 +152,7 @@ When you are working with different layer, you may find it often confusing that,
 This comes in very unhandy when you might be relying of a certain functionality or configuration.
 
 This class does offer a possibility to 'protect' certain variables of a recipe from being altered by any bbappend.
+Also it can 'protect' files from being overloaded by bbappends.
 
 ### Usage
 
@@ -161,6 +162,7 @@ Just inherit this class into any recipe
 
 To protect a variable from being changed you have to add the variable name to **LAYER_SANITY_PROT_VARS**.
 **LAYER_SANITY_PROT_VARS** is a list of regular expression separated by spaces.
+To protect a files from being changed you have to add the file name (with relative path if needed) to **LAYER_SANITY_PROT_FILES**.
 
 ### Examples
 
@@ -169,3 +171,8 @@ Let's say you want the varibale **EXTRA_OEMAKE** not being altered by any bbappe
 LAYER_SANITY_PROT_VARS += "EXTRA_OEMAKE.*"
 ```
 if now any of the bbappends try to modify the content of the variable an message will be shown with the change done.
+
+If you also want to 'protect' the file __defconfig__ ass the following into your recipe
+```
+LAYER_SANITY_PROT_FILES += "defconfig"
+```
