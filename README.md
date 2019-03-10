@@ -127,9 +127,14 @@ Following configuration variables can be used. All variables have reasonable def
  * **KCONFIG_SANITY_COMPLETE_NO_MATCH** [note,warn,error] - Logger function to trigger if a value has changed in **complete**-mode
  * **KCONFIG_SANITY_COMPLETE_NEW_SET**  [note,warn,error] - Logger function to trigger if a new and set value has been detected in **complete**-mode
  * **KCONFIG_SANITY_COMPLETE_NEW_UNSET** [note,warn,error] - Logger function to trigger if a new but unset value has been detected in **complete**-mode
+ * **KCONFIG_SANITY_COMPLETE_OLD_UNSET_EXISTS** [note,warn,error] - Logger function to trigger if a value has been set previously but is currently unset but existing in KConfig in **complete**-mode
+ * **KCONFIG_SANITY_COMPLETE_OLD_NA** [note,warn,error] - Logger function to trigger if a value has been set previously but is no absent due to missing KConfig in **complete**-mode
+
  * **KCONFIG_SANITY_FRAGMENT_NO_MATCH** [note,warn,error] - Logger function to trigger if a value has changed in **fragment**-mode
  * **KCONFIG_SANITY_FRAGMENT_NEW_SET**  [note,warn,error] - Logger function to trigger if a new and set value has been detected in **fragment**-mode
  * **KCONFIG_SANITY_FRAGMENT_NEW_UNSET** [note,warn,error] - Logger function to trigger if a new but unset value has been detected in **fragment**-mode
+ * **KCONFIG_SANITY_FRAGMENT_OLD_UNSET_EXISTS** [note,warn,error] - Logger function to trigger if a value has been set previously but is currently unset but existing in KConfig in **fragment**-mode
+ * **KCONFIG_SANITY_FRAGMENT_OLD_NA** [note,warn,error] - Logger function to trigger if a value has been set previously but is no absent due to missing KConfig in **fragment**-mode
 
 ### Remarks
 

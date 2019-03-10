@@ -28,12 +28,16 @@ KCONFIG_SANITY_COMPAREFILES ?= "${WORKDIR}/compare-config.${MACHINE} ${WORKDIR}/
 KCONFIG_SANITY_COMPLETE_NO_MATCH = "error"
 KCONFIG_SANITY_COMPLETE_NEW_SET = "error"
 KCONFIG_SANITY_COMPLETE_NEW_UNSET = "error"
+KCONFIG_SANITY_COMPLETE_OLD_UNSET_EXISTS = "error"
+KCONFIG_SANITY_COMPLETE_OLD_NA = "note"
 
 ## Set severity of warnings in fragment mode
 ## can be error,warning or note
 KCONFIG_SANITY_FRAGMENT_NO_MATCH = "error"
 KCONFIG_SANITY_FRAGMENT_NEW_SET = "warn"
 KCONFIG_SANITY_FRAGMENT_NEW_UNSET = "note"
+KCONFIG_SANITY_FRAGMENT_OLD_UNSET_EXISTS = "error"
+KCONFIG_SANITY_FRAGMENT_OLD_NA = "note"
 
 def call_logging_function(d, key, msg):
     import bb
@@ -129,6 +133,10 @@ python do_kconfig_sanity_fragement() {
 
     for item in get_config_files(d):
         known_symbols[os.path.basename(item)] = convert_to_symbol_table(d, get_symbols_from_fragement(d, item), item, {})
+    
+    if not "devconfig" in known_symbols.keys():
+        ## no defconfig no processing here
+        return
 
     defconfig_sym = known_symbols["defconfig"]    
     for k,v in known_symbols.items():
@@ -157,14 +165,21 @@ python do_kconfig_sanity_result() {
     for item in get_config_files(d):
         known_symbols = convert_to_symbol_table(d, get_symbols_from_fragement(d, item), item, known_symbols)
 
+    if not any(known_symbols):
+        ## maybe scc is used ot what ever - we don't have any symbols - so quit here
+        return
+
     final_symbols = get_symbols_from_fragement(d, d.getVar("KCONFIG_SANITY_FINALCONF"))
- 
+
+    found_symbols = []
     for item in final_symbols:
         fk = list(item.keys())[0]
         fv = item[fk]
         if fk in d.getVar("KCONFIG_SANITY_BLACKLIST").split(" "):
+            found_symbols.append(fk)
             continue
         if fk in known_symbols.keys():
+            found_symbols.append(fk)
             exp_val = known_symbols[fk]["value"]
             if not exp_val:
                 exp_val = None
@@ -174,9 +189,15 @@ python do_kconfig_sanity_result() {
                 else:
                     call_logging_function(d, "KCONFIG_SANITY_FRAGMENT_NO_MATCH", "{}{} was set to '{}' - config-file {} configured '{}'".format(d.getVar("KCONFIG_SANITY_CONFIG_PRE"), fk, fv, os.path.basename(known_symbols[fk]["file"]), exp_val))
         elif fv is not None:
-            call_logging_function(d, "KCONFIG_SANITY_FRAGMENT_NEW_SET", "{}{} ist set to '{}' but not defined by any config".format(d.getVar("KCONFIG_SANITY_CONFIG_PRE"), fk, fv))
+            call_logging_function(d, "KCONFIG_SANITY_FRAGMENT_NEW_SET", "{}{} is set to '{}' but not defined by any config".format(d.getVar("KCONFIG_SANITY_CONFIG_PRE"), fk, fv))
         elif fv is None:
-            call_logging_function(d, "KCONFIG_SANITY_FRAGMENT_NEW_UNSET", "{}{} ist new but unset".format(d.getVar("KCONFIG_SANITY_CONFIG_PRE"), fk))
+            call_logging_function(d, "KCONFIG_SANITY_FRAGMENT_NEW_UNSET", "{}{} is new but unset".format(d.getVar("KCONFIG_SANITY_CONFIG_PRE"), fk))
+    for fk in [x for x in known_symbols if x not in found_symbols]:
+        refs = get_kconfig_symbol_refs(d, fk)
+        if not any(refs):
+            call_logging_function(d, "KCONFIG_SANITY_FRAGMENT_OLD_UNSET_EXISTS", "{}{} was unset although it still exists".format(d.getVar("KCONFIG_SANITY_CONFIG_PRE"), fk))
+        else:
+            call_logging_function(d, "KCONFIG_SANITY_FRAGMENT_OLD_NA", "{}{} is no existsing anymore".format(d.getVar("KCONFIG_SANITY_CONFIG_PRE"), fk))
 }
 
 addtask do_kconfig_sanity_result after do_configure before do_build
@@ -184,6 +205,7 @@ addtask do_kconfig_sanity_result after do_configure before do_build
 python do_kconfig_complete() {
     import os
     import bb
+    found_symbols = []
     if any([x for x in d.getVar("KCONFIG_SANITY_COMPAREFILES").split(" ") if os.path.isfile(x)]):
         cmp_config = [x for x in d.getVar("KCONFIG_SANITY_COMPAREFILES").split(" ") if os.path.isfile(x)][0]
         cmp_symbols = {}
@@ -194,8 +216,10 @@ python do_kconfig_complete() {
             fk = list(item.keys())[0]
             fv = item[fk]
             if fk in d.getVar("KCONFIG_SANITY_BLACKLIST").split(" "):
+                found_symbols.append(fk)
                 continue
             if fk in cmp_symbols.keys():
+                found_symbols.append(fk)
                 exp_val = cmp_symbols[fk]["value"]
                 if not exp_val:
                     exp_val = None
@@ -204,10 +228,16 @@ python do_kconfig_complete() {
                     call_logging_function(d, "KCONFIG_SANITY_COMPLETE_NO_MATCH", "{}{} was set to '{}' - compare-file {} configured '{}'".format(d.getVar("KCONFIG_SANITY_CONFIG_PRE"), fk, fv, os.path.basename(cmp_symbols[fk]["file"]), exp_val))
             elif fv is not None:
                 ## abort
-                call_logging_function(d, "KCONFIG_SANITY_COMPLETE_NEW_SET", "{}{} ist set but '{}' not defined in compare-config".format(d.getVar("KCONFIG_SANITY_CONFIG_PRE"), fk, fv))
+                call_logging_function(d, "KCONFIG_SANITY_COMPLETE_NEW_SET", "{}{} is set but '{}' not defined in compare-config".format(d.getVar("KCONFIG_SANITY_CONFIG_PRE"), fk, fv))
             elif fv is None:
                 ## Note
-                call_logging_function(d, "KCONFIG_SANITY_COMPLETE_NEW_UNSET", "{}{} ist new but unset".format(d.getVar("KCONFIG_SANITY_CONFIG_PRE"), fk))
+                call_logging_function(d, "KCONFIG_SANITY_COMPLETE_NEW_UNSET", "{}{} is new but unset".format(d.getVar("KCONFIG_SANITY_CONFIG_PRE"), fk))
+        for fk in [x for x in new_symbols if x not in found_symbols]:
+            refs = get_kconfig_symbol_refs(d, fk)
+            if not any(refs):
+                call_logging_function(d, "KCONFIG_SANITY_COMPLETE_OLD_UNSET_EXISTS", "{}{} was unset although it still exists".format(d.getVar("KCONFIG_SANITY_CONFIG_PRE"), fk))
+            else:
+                call_logging_function(d, "KCONFIG_SANITY_COMPLETE_OLD_NA", "{}{} is no existsing anymore".format(d.getVar("KCONFIG_SANITY_CONFIG_PRE"), fk))
 }
 
 addtask do_kconfig_complete after do_configure before do_build
