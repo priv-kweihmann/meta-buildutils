@@ -176,3 +176,30 @@ If you also want to 'protect' the file __defconfig__ ass the following into your
 ```
 LAYER_SANITY_PROT_FILES += "defconfig"
 ```
+
+## buildutils-helper
+### Purpose
+
+A collection of helper functions.
+Currently it does offer
+
+ * **buildutils_find_in_layer** - Finds a file somewhere among all configured layers
+ * **buildutils_get_files_by_shebang** - Find files by shebang
+ * **buildutils_get_files_by_extention** - Find files by file-extension
+ * **buildutils_get_files_by_extention_or_shebang** - Combined result of **buildutils_get_files_by_shebang** + **buildutils_get_files_by_extention**
+
+### Usage
+
+This should only be used indirectly
+
+## python-package-ident
+### Purpose
+
+This class does tyr to identify the needed bitbake-packages for the python code found in the recipe-packages.
+On any findings it will give advice via console
+
+### Usage
+
+For python3 installation please inherit **python3-package-ident**.
+
+For python2 installation please inherit **python-package-ident**
