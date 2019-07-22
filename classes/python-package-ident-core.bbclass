@@ -36,8 +36,12 @@ def get_python_modules(d):
             tmp = i.read()
             if tmp.startswith("#"):
                 ## Probe for manifest with or without preambel
-                tmp = tmp.find('# EOC') + 6 # EOC + \n -> taken from meta/recipes-devtools/python/python3/create_manifest3.py
-            _module_dict = json.loads(tmp)
+                tmp = tmp[tmp.find('# EOC') + 6:] # EOC + \n -> taken from meta/recipes-devtools/python/python3/create_manifest3.py
+            try:
+                _module_dict = json.loads(tmp)
+            except json.JSONDecodeError as e:
+                bb.warn("Something went wrong on loading python-manifest: {}".format(e))
+                _module_dict = {}
         _strip_path = os.path.join(d.getVar("STAGING_LIBDIR"), d.getVar("PYTHON_DIR"))
         
         for k,v in _module_dict.items():
