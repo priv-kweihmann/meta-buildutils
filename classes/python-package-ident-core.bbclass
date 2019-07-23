@@ -109,6 +109,6 @@ python do_ident_python_packages() {
         if any(_deps_too_less):
             bb.warn("{} uses code from python-packages:{}. Please add them to RDEPENDS_${{PN}}{}".format(_dir, ",".join(sorted(_deps_too_less)), _dir_wo_pn))
         if any(_deps_too_much):
-            bb.warn("{} don't use code from python-packages:{}. Please remove them to RDEPENDS_${{PN}}{}".format(_dir, ",".join(sorted(_deps_too_much)), _dir_wo_pn))    
+            bb.warn("{} don't uses code from python-packages:{}. Please remove them from RDEPENDS_${{PN}}{}".format(_dir, ",".join(sorted(_deps_too_much)), _dir_wo_pn))    
 }
 do_package[postfuncs] = "do_ident_python_packages"
