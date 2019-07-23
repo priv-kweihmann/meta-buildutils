@@ -15,7 +15,7 @@ def buildutils_get_files_by_shebang(d, path, pattern, excludes=[]):
     import os
     import re
     res = []
-    pattern = r"^'!\s+{}".format(pattern)
+    pattern = r"^#!\s*{}".format(pattern)
     for root, dirs, files in os.walk(path, topdown=True):
         for item in files:
             _filename = os.path.join(root, item)

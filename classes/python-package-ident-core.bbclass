@@ -79,6 +79,7 @@ python do_ident_python_packages() {
         _full_path = os.path.join(_package_dir, _dir)
         for _file in buildutils_get_files_by_extention_or_shebang(d, _full_path, ".*python", [".py"]):
             try:
+                bb.note("Check on file {}".format(_file))
                 with open(_file) as f:
                     instructions = dis.get_instructions(f.read())
                     imports = [__ for __ in instructions if 'IMPORT' in __.opname]
