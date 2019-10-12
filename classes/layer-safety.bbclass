@@ -84,4 +84,4 @@ python do_layer_safety() {
         bb.error(item)
 }
 
-addtask do_layer_safety before do_build
+do_compile[prefuncs] += "do_layer_safety"

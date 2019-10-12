@@ -152,7 +152,8 @@ python do_kconfig_sanity_fragement() {
         if any(warning_syms):
             call_logging_function(d, "KCONFIG_SANITY_FRAGMENT_NO_MATCH", "{} must be set in either defconfig or {} to be active".format(",".join(warning_syms), k))
 }
-addtask do_kconfig_sanity_fragement after do_configure before do_build
+
+do_configure[postfuncs] += "do_kconfig_sanity_fragement"
 
 python do_kconfig_sanity_result() {
     import os
@@ -200,7 +201,7 @@ python do_kconfig_sanity_result() {
             call_logging_function(d, "KCONFIG_SANITY_FRAGMENT_OLD_NA", "{}{} is no existsing anymore".format(d.getVar("KCONFIG_SANITY_CONFIG_PRE"), fk))
 }
 
-addtask do_kconfig_sanity_result after do_configure before do_build
+do_configure[postfuncs] += "do_kconfig_sanity_result"
 
 python do_kconfig_complete() {
     import os
@@ -240,4 +241,4 @@ python do_kconfig_complete() {
                 call_logging_function(d, "KCONFIG_SANITY_COMPLETE_OLD_NA", "{}{} is no existsing anymore".format(d.getVar("KCONFIG_SANITY_CONFIG_PRE"), fk))
 }
 
-addtask do_kconfig_complete after do_configure before do_build
+do_configure[postfuncs] += "do_kconfig_complete"
