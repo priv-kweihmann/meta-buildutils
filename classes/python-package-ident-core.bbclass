@@ -77,7 +77,7 @@ python do_ident_python_packages() {
         _dir_wo_pn = _dir.replace(d.getVar("PN"), "", 1)
         _imports = []
         _full_path = os.path.join(_package_dir, _dir)
-        for _file in buildutils_get_files_by_extention_or_shebang(d, _full_path, ".*python", [".py"]):
+        for _file in buildutils_get_files_by_extension_or_shebang(d, _full_path, ".*python", [".py"]):
             try:
                 bb.note("Check on file {}".format(_file))
                 with open(_file) as f:

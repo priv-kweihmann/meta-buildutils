@@ -32,7 +32,7 @@ def buildutils_get_files_by_shebang(d, path, pattern, excludes=[]):
                 pass
     return [x for x in res if os.path.isfile(x)]
 
-def buildutils_get_files_by_extention(d, path, pattern, excludes=[]):
+def buildutils_get_files_by_extension(d, path, pattern, excludes=[]):
     import os
     res = []
     if isinstance(pattern, str):
@@ -47,6 +47,6 @@ def buildutils_get_files_by_extention(d, path, pattern, excludes=[]):
                 res.append(_filepath)
     return [x for x in res if os.path.isfile(x)]
 
-def buildutils_get_files_by_extention_or_shebang(d, path, shebang, extentions, excludes=[]):
+def buildutils_get_files_by_extension_or_shebang(d, path, shebang, extensions, excludes=[]):
     return sorted(list(set(buildutils_get_files_by_shebang(d, path, shebang, excludes) + \
-                           buildutils_get_files_by_extention(d, path, extentions, excludes))))
+                           buildutils_get_files_by_extension(d, path, extensions, excludes))))

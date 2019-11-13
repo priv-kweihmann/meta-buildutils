@@ -3,7 +3,7 @@
 ## Enable the check of config fragements against resulting config
 KCONFIG_SANITY_FRAGMENT_EVAL ?= "1"
 ## Enable a detauled explanation why a symbol can't be applied
-KCONFIG_SANITY_FRAGEMENT_KCONFIG_EXPLAIN ?= "1"
+KCONFIG_SANITY_FRAGMENT_KCONFIG_EXPLAIN ?= "1"
 ## Path to defconfig
 KCONFIG_SANITY_DEFCONFIG ?= "${WORKDIR}/defconfig"
 ## Path to final config
@@ -185,7 +185,7 @@ python do_kconfig_sanity_result() {
             if not exp_val:
                 exp_val = None
             if fv != exp_val:
-                if d.getVar("KCONFIG_SANITY_FRAGEMENT_KCONFIG_EXPLAIN") == "1":
+                if d.getVar("KCONFIG_SANITY_FRAGMENT_KCONFIG_EXPLAIN") == "1":
                     get_kconfig_explanation(d, fk)
                 else:
                     call_logging_function(d, "KCONFIG_SANITY_FRAGMENT_NO_MATCH", "{}{} was set to '{}' - config-file {} configured '{}'".format(d.getVar("KCONFIG_SANITY_CONFIG_PRE"), fk, fv, os.path.basename(known_symbols[fk]["file"]), exp_val))
