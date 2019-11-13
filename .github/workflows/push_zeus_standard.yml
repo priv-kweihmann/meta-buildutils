@@ -1,4 +1,4 @@
-name: "[master]-standard"
+name: "[zeus]-standard"
 
 on:
   push:
@@ -9,7 +9,7 @@ jobs:
     name: "qemux86 with standard options"
     env:
       MACHINE: qemux86
-      BRANCH: master
+      BRANCH: zeus
 
     runs-on: ubuntu-latest
 

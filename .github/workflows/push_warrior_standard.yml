@@ -1,4 +1,4 @@
-name: "[master]-standard"
+name: "[warrior]-standard"
 
 on:
   push:
@@ -9,7 +9,7 @@ jobs:
     name: "qemux86 with standard options"
     env:
       MACHINE: qemux86
-      BRANCH: master
+      BRANCH: warrior
 
     runs-on: ubuntu-latest
 
