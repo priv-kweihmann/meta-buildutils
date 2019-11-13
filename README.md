@@ -1,5 +1,12 @@
 # meta-buildutils
 
+| version | build status                                                                                                |
+|---------|:------------------------------------------------------------------------------------------------------------|
+| master  | ![Nightly status](https://github.com/priv-kweihmann/meta-buildutils/workflows/[master]-standard/badge.svg)  |
+| zeus    | ![Nightly status](https://github.com/priv-kweihmann/meta-buildutils/workflows/[zeus]-standard/badge.svg)    |
+| warrior | ![Nightly status](https://github.com/priv-kweihmann/meta-buildutils/workflows/[warrior]-standard/badge.svg) |
+| thud    | ![Nightly status](https://github.com/priv-kweihmann/meta-buildutils/workflows/[thud]-standard/badge.svg)    |
+
 A collection of build utils to used in with yocto
 
 ## auto-inherit
