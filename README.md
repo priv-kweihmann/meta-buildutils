@@ -41,6 +41,8 @@ A collection of build utils to used in with YOCTO
 - [python-package-ident](#python-package-ident)
   - [Purpose](#purpose-5)
   - [Usage](#usage-5)
+- [rm_orphans](#rm_orphans)
+  - [Usage](#usage-6)
 
 ## auto-inherit
 
@@ -268,3 +270,16 @@ On any findings it will give advice via console
 For python3 installation please inherit **python3-package-ident**.
 
 For python2 installation please inherit **python-package-ident**
+
+## rm_orphans
+
+This class can be included globally (meaning in the distro or local.conf) to remove the leftover log-files, which bitbake leaves for whatever reason in each recipe's TEMP-dir. After this process only files (run + log) from the last run will remain.
+This should help mitigating the excessive disk spamming of bitbake
+
+### Usage
+
+Add e.g. to local.conf
+
+```bitbake
+INHERIT += "rm_orphans"
+```
