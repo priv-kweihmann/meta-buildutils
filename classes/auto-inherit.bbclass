@@ -33,14 +33,19 @@ AUTO_INHERIT_CONF ?= ""
 ## inherit class foo on all recipe whcih depend on recipe BAR and are licensed under any GPL-variant
 ## AUTO_INHERIT_CONF = "BBClass=python-speedups;props=[auto_inherit_is_at_path(d,'meta-buildutils/recipes-foo/',False)]"
 
-python __anonymous () {
+# Variables to be masked out to avoid hash corruption
+AUTO_INHERIT_MASK_VARS ?= "BBINCLUDED"
+
+addhandler auto_inherit_handler
+auto_inherit_handler[eventmask] = "bb.event.RecipePreFinalise"
+python auto_inherit_handler() {
     import os
     import re
     import bb
     from bb.parse.parse_py import BBHandler
 
     res = []
-    for item in [x for x in d.getVar("AUTO_INHERIT_CONF", True).split(" ") if x]:
+    for item in [x for x in d.getVar("AUTO_INHERIT_CONF").split(" ") if x]:
         args = dict(e.split('=') for e in item.split(';'))
         include = True
         if not "props" in args.keys() or not "BBClass" in args.keys():
@@ -54,7 +59,11 @@ python __anonymous () {
                 bb.warn("Prop-Func {} is not well-formed: {}".format(prop_func, e))
         if include:
             bb.note("Inherting {} caused by auto-inherit".format(args["BBClass"]))   
-            BBHandler.inherit(args["BBClass"], "lb-inherit", 1, d) 
+            BBHandler.inherit(args["BBClass"], "lb-inherit", 1, d)
+    if d.getVar("AUTO_INHERIT_CONF"):
+        for e in d.keys():
+            if d.getVarFlag(e, 'task'):
+                d.appendVarFlag(e, "vardepsexclude", " " + d.getVar("AUTO_INHERIT_MASK_VARS"))
 }
 
 
