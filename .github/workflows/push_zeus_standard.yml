@@ -16,7 +16,7 @@ jobs:
     steps:
       - uses: actions/checkout@v1
         with:
-          ref: master
+          ref: zeus
       - name: Update APT
         run: sudo apt-get update
       - name: Install Dependencies
