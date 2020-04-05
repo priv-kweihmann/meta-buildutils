@@ -1,3 +1,5 @@
+## SPDX-License-Identifier: BSD-2-Clause
+## Copyright (c) 2019, Konrad Weihmann
 ### This class does check kconfig style configuration for sanity
 
 ## Enable the check of config fragements against resulting config

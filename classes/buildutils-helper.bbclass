@@ -1,6 +1,5 @@
-## Copyright 2019, K. Weihmann <kweihmann@outlook.com>
-## Licensed under BSD-2-Clause
-##
+## SPDX-License-Identifier: BSD-2-Clause
+## Copyright (c) 2019, Konrad Weihmann
 
 def buildutils_find_in_layer(d, _file, _skipPath=""):
     import os

@@ -1,5 +1,5 @@
-## Copyright 2019, K. Weihmann <kweihmann@outlook.com>
-## Licensed under BSD-2-Clause
+## SPDX-License-Identifier: BSD-2-Clause
+## Copyright (c) 2019, Konrad Weihmann
 ##
 ## This class does help to identify the needed python-packages
 ## to be put into RDEPENDS_${PN}

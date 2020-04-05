@@ -1,3 +1,5 @@
+## SPDX-License-Identifier: BSD-2-Clause
+## Copyright (c) 2019, Konrad Weihmann
 ## This implements several to speedup python startup time
 ## when running on target
 

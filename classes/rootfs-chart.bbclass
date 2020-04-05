@@ -1,3 +1,5 @@
+## SPDX-License-Identifier: BSD-2-Clause
+## Copyright (c) 2020, Konrad Weihmann
 def rootfs_get_tasks_deps(d, name, seen=[]):
     import oe.sstatesig
     import pickle

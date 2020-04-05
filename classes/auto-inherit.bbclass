@@ -1,5 +1,6 @@
 ## Auto inherit
-## Copyright Konrad Weihmann <kweihmann@outlook.com> 2019
+## SPDX-License-Identifier: BSD-2-Clause
+## Copyright (c) 2019, Konrad Weihmann
 
 ## This class automatically inherits other bbclasses into
 ## any recipe based on configurable criteria

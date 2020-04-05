@@ -1,3 +1,5 @@
+## SPDX-License-Identifier: BSD-2-Clause
+## Copyright (c) 2019, Konrad Weihmann
 ## This class does sanity check if a 
 ## variable is not altered by a .bbappend-file
 ## To 'protect' the variable just insert any
