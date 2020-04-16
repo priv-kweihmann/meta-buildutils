@@ -99,10 +99,17 @@ python do_ident_python_packages() {
 
         _needed_depends = ["core"]
 
-        for _imp in _imports:
+        for _imp in sorted(_imports):
+            found = False
             for k,v in _modules.items():
-                if _imp in v and not k in _needed_depends:
-                    _needed_depends.append(k)
+                if _imp in v:
+                    found = True
+                    if k not in _needed_depends:
+                        _needed_depends.append(k)
+            if not found:
+                bb.note("No package found for import '{}'".format(_imp))
+            if not found and "misc" not in _needed_depends:
+                _needed_depends.append("misc")
         
         _deps_too_much = ["{}-{}".format(d.getVar("PYTHON_PN"), x) for x in _depends_stripped if not x in _needed_depends]
         _deps_too_less = ["{}-{}".format(d.getVar("PYTHON_PN"), x) for x in _needed_depends if not x in _depends_stripped]

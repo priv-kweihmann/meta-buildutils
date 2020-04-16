@@ -11,5 +11,5 @@
 inherit pythonnative
 inherit buildutils-helper
 
-PYTHON_MODULE_MANIFEST = "python-manifest.json"
+PYTHON_MODULE_MANIFEST = "python2-manifest.json"
 inherit python-package-ident-core
