@@ -64,6 +64,19 @@ def rootfs_generate_output(d, stash, output):
     with open(output, "w") as o:
         o.write("digraph D {{\nrankdir=\"LR\"\n{}\n{}\n}}".format("\n".join(sorted(label)), "\n".join(sorted(report))))
 
+python do_rootfs_package_map() {
+    from oe.rootfs import image_list_installed_packages
+    import oe.packagedata
+
+    pkgmap = oe.packagedata.pkgmap(d)
+
+    with open(d.expand("${DEPLOY_DIR_IMAGE}/${PN}-package-map.json"), "w") as o:
+        o.write('{\n')
+        for k, v in pkgmap.items():
+            o.write('    "{}": "{}",\n'.format(k, v))
+        o.write('}\n')
+}
+        
 python do_rootfs_chart_packages() {
     from oe.rootfs import image_list_installed_packages
     import oe.packagedata
@@ -95,4 +108,4 @@ python do_rootfs_chart_recipes() {
     rootfs_generate_output(d, out, d.expand("${DEPLOY_DIR_IMAGE}/${PN}-recipes.dot"))
 }
 
-ROOTFS_POSTPROCESS_COMMAND += " do_rootfs_chart_recipes; do_rootfs_chart_packages; "
+ROOTFS_POSTPROCESS_COMMAND += " do_rootfs_chart_recipes; do_rootfs_chart_packages; do_rootfs_package_map;"
