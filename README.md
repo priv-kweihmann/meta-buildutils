@@ -45,6 +45,9 @@ A collection of build utils to used in with YOCTO
   - [Usage](#usage-6)
 - [rootfs-chart](#rootfs-chart)
   - [Usage](#usage-7)
+- [hashdog](#hashdog)
+  - [Usage](#usage-8)
+  - [Configuration](#configuration-4)
 
 ## auto-inherit
 
@@ -302,3 +305,23 @@ Add e.g. to any image recipe
 ```bitbake
 inherit rootfs-chart
 ```
+
+## hashdog
+
+The class identifies variables used in a task, which cause sstate corruptions, as they either point to a
+local path or are known to be build host specific
+
+### Usage
+
+Add
+
+```bitbake
+INHERIT += "hashdog"
+```
+
+to your local.conf
+
+### Configuration
+
+- HASHDOG_CULP - sets variables, which are known to be build host specific
+- HASHDOG_EXCL - sets the variables which are not taken into account for calculating the task hash
