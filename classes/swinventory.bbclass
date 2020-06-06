@@ -133,7 +133,7 @@ SWINVENTORYDIR = "${WORKDIR}/swinventory"
 # global storage
 SWINVENTORY_DEPLOY ??= "${DEPLOY_DIR}/swinventory"
 # pattern to probe for detecting direct file copies
-SWINVENTORY_SRC_PATTERN ??= "${S}/** ${S} ${B}/** ${B} ${WORKDIR}"
+SWINVENTORY_SRC_PATTERN ??= "${S}/** ${S} ${WORKDIR}"
 # mime types to treat as binaries
 SWINVENTORY_EXEC_MIME ??= "application/x-pie-executable application/x-executable"
 
