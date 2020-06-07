@@ -184,6 +184,7 @@ def swinventory_getsrc_from_binary(d, binary, basepath):
                         universal_newlines=True, shell=True).split("\n")
         _src_files = [x.lstrip("./") for x in _src_files]
         _src_files = [x for x in _src_files if x.startswith(d.getVar("PN"))]
+        _src_files = [x.replace(basepath.lstrip("/"), "", 1) for x in _src_files]
         for _s in _src_files:
             res.append(swinventory_hash_file(_s, os.path.join(basepath, _s)))
     except:
@@ -223,7 +224,7 @@ def swinventory_create_filelist_target(d, pkg):
                                                         universal_newlines=True).strip("\n")
                 if _item["type"] in _bin_pattern:
                     _item["sources"] = swinventory_getsrc_from_binary(d,
-                                                                      os.path.join(d.getVar("D"), _rel_filename).lstrip("/"),
+                                                                      os.path.join(d.getVar("D"), _rel_filename.lstrip("/")),
                                                                       d.getVar("WORKDIR"))
                 else:
                     _tmp = swinventory_getsrc_from_file(d, _rel_filename)
@@ -238,11 +239,13 @@ def swinventory_create_filelist_nontarget(d, pkg):
     import subprocess
     res = []
     _pkroot = d.getVar("D")
+    # for native packages we need to strip staging_dir as well
+    _staging_dir = d.getVar("STAGING_DIR_NATIVE")
     _bin_pattern = d.getVar("SWINVENTORY_EXEC_MIME").split(" ")
     for root, dirs, files in os.walk(_pkroot):
         for f in files:
             _filename = os.path.join(root, f)
-            _rel_filename = _filename.replace(_pkroot, "", 1).lstrip("/")
+            _rel_filename = _filename.replace(_pkroot, "").replace(_staging_dir.lstrip("/"), "").lstrip("/")
             _item = swinventory_hash_file(_rel_filename, _filename, True)
             try:
                 _item["type"] = subprocess.check_output(["file", "--brief", "--mime-type", _filename],
@@ -304,7 +307,38 @@ do_swinventory[cleandirs] = "${SWINVENTORYDIR}"
 do_swinventory[sstate-inputdirs] = "${SWINVENTORYDIR}"
 do_swinventory[sstate-outputdirs] = "${SWINVENTORY_DEPLOY}/"
 
-addtask do_swinventory before do_build do_populate_sysroot after do_install do_package
+python() {
+    # known exceptions
+    _exceptions = {
+        "buildtools-tarball": { "after": "", "before": "" },
+        "base-passwd": { "after": "do_package", "before": "do_build" }
+    }
+    _pn = d.getVar("PN")
+    if _pn in _exceptions:
+        _after = _exceptions[_pn]["after"]
+        _before = _exceptions[_pn]["before"]
+    else:
+        _after = "do_unpack"
+        _needles = ["do_package" if not bb.data.inherits_class("nopackages", d) else "", "do_install"]
+        for n in _needles:
+            if not n:
+                continue
+            if "task" in (d.getVarFlags(n) or []):
+                _after = n
+                break
+        _before = "do_build"
+        _needles = ["do_populate_sysroot", "do_rmwork", "do_build"]
+        for n in _needles:
+            if "task" in (d.getVarFlags(n) or []):
+                _before = n
+                break
+
+    if _after and _before:
+        d.appendVarFlag(_before, 'depends', ' {}:do_swinventory'.format(_pn))
+        d.appendVarFlag('do_swinventory', 'depends', ' {}:{}'.format(_pn, _after))
+}
+
+addtask do_swinventory
 
 SSTATETASKS += "do_swinventory"
 
