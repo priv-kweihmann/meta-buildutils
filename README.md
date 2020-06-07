@@ -51,6 +51,8 @@ A collection of build utils to used in with YOCTO
 - [swinventory](#swinventory)
   - [Usage](#usage-9)
   - [Configuration](#configuration-5)
+- [swinventory-image](#swinventory-image)
+  - [Usage](#usage-10)
 
 ## auto-inherit
 
@@ -364,3 +366,26 @@ to your local.conf
 - SWINVENTORY_DEPLOY - global export-dir for all package information
 - SWINVENTORY_SRC_PATTERN - pattern used to match installed file back to source files
 - SWINVENTORY_EXEC_MIME - MIME-types detected which will treat files as binaries
+
+
+## swinventory-image
+
+In addition to [swinventory](#swinventory) you can create a image based swinventory.
+This module requires [swinventory](#swinventory) module to be enabled globally.
+
+### Usage
+
+Add
+
+```bitbake
+INHERIT += "swinventory"
+```
+
+to your local.conf and
+
+```bitbake
+inherit swinventory-image
+```
+
+in every image you like.
+It will create a file calles `${PN}-swinventory.json` at `tmp/deploy/images/<arch>/`
