@@ -138,8 +138,10 @@ SWINVENTORY_SRC_PATTERN ??= "${S}/** ${S} ${WORKDIR}"
 SWINVENTORY_EXEC_MIME ??= "application/x-pie-executable application/x-executable"
 
 def swinventory_sanitizes_recipe_paths(d, _in):
+    import os
     for b in d.getVar("BBPATH").split(":"):
-        _in = _in.replace(b + "/", "", 1)
+        _rpl = os.path.dirname(b)
+        _in = _in.replace(_rpl, "", 1)
     return _in.lstrip("/")
 
 def swinventory_sanitize_list(_list):
@@ -156,7 +158,9 @@ def swinventory_create_depends(d):
         if not p.strip():
             continue
         if p.startswith("virtual/"):
-            p = d.getVar("PREFERRED_PROVIDER_{}".format(p)) or p
+            p = d.getVar("PREFERRED_PROVIDER_{}".format(p))
+            if not p:
+                continue
         res.append(p)
     return res
 
@@ -274,6 +278,18 @@ def swinventory_create_packages(d, pkg, file_function):
             "license": d.getVar("LICENSE_{}".format(pkg)) or d.getVar("LICENSE")
            }
 
+def swinventory_create_dummy_package(d, pkg, depends):
+    import re
+    return {
+            "name": pkg,
+            "recipes": swinventory_sanitize_list(swinventory_sanitizes_recipe_paths(d, x) for x in d.getVar("BBINCLUDED").split(" ") if x),
+            "depends": swinventory_sanitize_list(depends),
+            "rdepends": swinventory_sanitize_list(re.sub(r"\(.*?\)", "", d.getVar("RDEPENDS_{}".format(pkg)) or "")),
+            "cveproduct": d.getVar("CVE_PRODUCT") or d.getVar("BPN"),
+            "files": [],
+            "license": d.getVar("LICENSE_{}".format(pkg)) or d.getVar("LICENSE")
+           }
+
 python do_swinventory() {
     import json
     import os
@@ -296,6 +312,14 @@ python do_swinventory() {
                 continue
             with open(os.path.join(d.expand("${SWINVENTORYDIR}"), "{}.json".format(pkg)), "w") as o:
                 json.dump(swinventory_create_packages(d, pkg, swinventory_create_filelist_target),
+                        o,
+                        indent=2,
+                        sort_keys=True)
+        # in case there is no base package, create a dummy one
+        if not d.getVar("PN") in d.expand("${PACKAGES}").split(" "):
+            pkg = d.getVar("PN")
+            with open(os.path.join(d.expand("${SWINVENTORYDIR}"), "{}.json".format(pkg)), "w") as o:
+                json.dump(swinventory_create_dummy_package(d, pkg, d.expand("${PACKAGES}").split(" ")),
                         o,
                         indent=2,
                         sort_keys=True)
