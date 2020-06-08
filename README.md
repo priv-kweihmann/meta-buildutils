@@ -1,4 +1,4 @@
-# meta-buildutils <!-- omit in toc -->
+# meta-buildutils
 
 | version | build status                                                                                                |
 | ------- | :---------------------------------------------------------------------------------------------------------- |
@@ -7,7 +7,7 @@
 | warrior | ![Nightly status](https://github.com/priv-kweihmann/meta-buildutils/workflows/[warrior]-standard/badge.svg) |
 | thud    | ![Nightly status](https://github.com/priv-kweihmann/meta-buildutils/workflows/[thud]-standard/badge.svg)    |
 
-A collection of build utils to used in with YOCTO
+A collection of build utils to be used in with YOCTO
 
 ## Avaiable classes
 
