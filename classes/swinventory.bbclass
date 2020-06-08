@@ -1,6 +1,8 @@
 # SPDX-License-Identifier: BSD-2-Clause
 # Copyright (c) 2020, Konrad Weihmann
 
+## TODO catch renames/aliases from debian.bbclass
+
 # This class create an inventory of each package
 # containing
 # - LICENSE
@@ -307,7 +309,8 @@ python do_swinventory() {
                       indent=2,
                       sort_keys=True)
     else:
-        for pkg in d.expand("${PACKAGES}").split(" "):
+        _pkgs = [os.path.basename(x.path) for x in os.scandir(d.getVar("PKGDEST")) if os.path.isdir(x.path)]
+        for pkg in _pkgs:
             if not pkg or not pkg.strip():
                 continue
             with open(os.path.join(d.expand("${SWINVENTORYDIR}"), "{}.json".format(pkg)), "w") as o:
@@ -316,10 +319,10 @@ python do_swinventory() {
                         indent=2,
                         sort_keys=True)
         # in case there is no base package, create a dummy one
-        if not d.getVar("PN") in d.expand("${PACKAGES}").split(" "):
+        if not d.getVar("PN") in _pkgs:
             pkg = d.getVar("PN")
             with open(os.path.join(d.expand("${SWINVENTORYDIR}"), "{}.json".format(pkg)), "w") as o:
-                json.dump(swinventory_create_dummy_package(d, pkg, d.expand("${PACKAGES}").split(" ")),
+                json.dump(swinventory_create_dummy_package(d, pkg, _pkgs),
                         o,
                         indent=2,
                         sort_keys=True)
