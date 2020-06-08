@@ -3,7 +3,11 @@
 
 inherit swinventory
 
-def swinventory_image_get_package(d, name, out):
+# list of full paths to collected manifest files
+# can be e.g. used by a postfunc to do further processing 
+SWINVENTORY_IMAGE_COLLECTED_MANIFESTS = ""
+
+def swinventory_image_get_package(d, name, out, files):
     import os
     import json
 
@@ -14,6 +18,7 @@ def swinventory_image_get_package(d, name, out):
     try:
         with open(os.path.join(d.getVar("SWINVENTORY_DEPLOY"), name + ".json")) as i:
             _in = json.load(i)
+            files.append(i)
             out[name] = _in
             for _n in set(_in["depends"] + _in["rdepends"]):
                 if _n not in out:
@@ -26,11 +31,14 @@ python do_swinventory_image() {
     import json
 
     out = {}
+    files = []
     for k in image_list_installed_packages(d):
-        swinventory_image_get_package(d, k, out)
+        swinventory_image_get_package(d, k, out, files)
     
     with open(d.expand("${DEPLOY_DIR_IMAGE}/${PN}-swinventory.json"), "w") as o:
         json.dump(out, o, sort_keys=True, indent=2)
+    
+    d.setVar("SWINVENTORY_IMAGE_COLLECTED_MANIFESTS", " ".join(files))
 }
 
 ROOTFS_POSTPROCESS_COMMAND += " do_swinventory_image; "

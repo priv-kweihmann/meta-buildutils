@@ -176,6 +176,9 @@ SWINVENTORY_EXCEPT_package-index[after] = ""
 SWINVENTORY_EXCEPT_package-index[before] = ""
 # include files matching (glob) pattern into additionalFiles
 SWINVENTORY_ADDFILES_PATTERN ??= ""
+# list of full paths to collected manifest files
+# can be e.g. used by a postfunc to do further processing 
+SWINVENTORY_COLLECTED_MANIFESTS = ""
 
 def swinventory_sanitizes_recipe_paths(d, _in):
     import os
@@ -367,6 +370,7 @@ def swinventory_create_dummy_package(d, pkg, depends):
 python do_swinventory() {
     import json
     import os
+    _collected_manifests = []
     if bb.data.inherits_class('image', d):
         # doesn't make much sense in images
         return
@@ -380,6 +384,7 @@ python do_swinventory() {
                         o,
                         indent=2,
                         sort_keys=True)
+                _collected_manifests.append(o.name)
         # now catch all PROVIDES overrides
         for _pkg in d.expand("${PROVIDES}").split(" "):
             if _pkg != pkg or (not _pkg or not _pkg.strip()):
@@ -391,6 +396,7 @@ python do_swinventory() {
                         o,
                         indent=2,
                         sort_keys=True)
+                _collected_manifests.append(o.name)
     else:
         _pkgs = [os.path.basename(x.path) for x in os.scandir(d.getVar("PKGDEST")) if os.path.isdir(x.path)]
         for pkg in _pkgs:
@@ -401,6 +407,7 @@ python do_swinventory() {
                         o,
                         indent=2,
                         sort_keys=True)
+                _collected_manifests.append(o.name)
         # in case there is no base package, create a dummy one
         if not d.getVar("PN") in _pkgs:
             pkg = d.getVar("PN")
@@ -409,6 +416,7 @@ python do_swinventory() {
                         o,
                         indent=2,
                         sort_keys=True)
+                _collected_manifests.append(o.name)
         # now catch all the things created due to debian.bbclass renaming
         # for these another dummy package is created which links to the
         # rightly named package
@@ -423,6 +431,7 @@ python do_swinventory() {
                             o,
                             indent=2,
                             sort_keys=True)
+                    _collected_manifests.append(o.name)
         # now catch all PROVIDES overrides
         for pkg in d.expand("${PROVIDES}").split(" "):
             if pkg in _pkgs or (not pkg or not pkg.strip()):
@@ -434,6 +443,8 @@ python do_swinventory() {
                         o,
                         indent=2,
                         sort_keys=True)
+                _collected_manifests.append(o.name)
+    d.setVar("SWINVENTORY_COLLECTED_MANIFESTS", " ".join(_collected_manifests))
 }
 do_swinventory[doc] = "Create an inventory of each package"
 do_swinventory[vardepexclude] += "BBPATH BBINCLUDED"
