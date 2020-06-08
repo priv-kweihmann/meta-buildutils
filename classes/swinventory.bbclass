@@ -1,8 +1,6 @@
 # SPDX-License-Identifier: BSD-2-Clause
 # Copyright (c) 2020, Konrad Weihmann
 
-## TODO catch renames/aliases from debian.bbclass
-
 # This class create an inventory of each package
 # containing
 # - LICENSE
@@ -13,6 +11,7 @@
 # - Source files used (binary + non-binaries)
 # - recipes used
 # - package name
+# - additional plain test files
 #
 # these will be placed at ${SWINVENTORY_DEPLOY}/<package-name>.json
 #
@@ -20,29 +19,56 @@
 #
 # {
 #     "$schema": "http://json-schema.org/draft-04/schema#",
-#     "type": "object",
+#     "additionalProperties": false,
 #     "properties": {
+#         "additionalFiles": {
+#             "description": "recipes used to build this package",
+#             "items": [
+#                 {
+#                     "additionalProperties": false,
+#                     "properties": {
+#                         "content": {
+#                             "description": "plain content of the file",
+#                             "type": "string"
+#                         },
+#                         "hash": {
+#                             "description": "sha256 sum of the file",
+#                             "type": "string"
+#                         },
+#                         "name": {
+#                             "description": "full path of the file",
+#                             "type": "string"
+#                         }
+#                     },
+#                     "required": [
+#                         "hash",
+#                         "name",
+#                         "type"
+#                     ],
+#                     "type": "object"
+#                 }
+#             ],
+#             "type": "array"
+#         },
 #         "cveproduct": {
 #             "description": "CVE product identifier",
 #             "type": "string"
 #         },
 #         "depends": {
-#             "type": "array",
-#             "minItems": 0,
 #             "items": [
 #                 {
 #                     "description": "buildtime dependencies",
 #                     "type": "string"
 #                 }
-#             ]
+#             ],
+#             "minItems": 0,
+#             "type": "array"
 #         },
 #         "files": {
-#             "type": "array",
-#             "minItems": 0,
 #             "description": "files installed by the package",
 #             "items": [
 #                 {
-#                     "type": "object",
+#                     "additionalProperties": false,
 #                     "properties": {
 #                         "hash": {
 #                             "description": "sha256 sum of the file",
@@ -53,9 +79,8 @@
 #                             "type": "string"
 #                         },
 #                         "sources": {
-#                             "type": "array",
 #                             "items": {
-#                                 "type": "object",
+#                                 "additionalProperties": false,
 #                                 "properties": {
 #                                     "hash": {
 #                                         "description": "sha256 sum of the source file",
@@ -66,57 +91,60 @@
 #                                         "type": "string"
 #                                     }
 #                                 },
-#                                 "additionalProperties": false,
 #                                 "required": [
 #                                     "hash",
 #                                     "name"
-#                                 ]
-#                             }
+#                                 ],
+#                                 "type": "object"
+#                             },
+#                             "type": "array"
 #                         },
 #                         "type": {
 #                             "description": "MIME type of file",
 #                             "type": "string"
 #                         }
 #                     },
-#                     "additionalProperties": false,
 #                     "required": [
 #                         "hash",
 #                         "name",
 #                         "sources",
 #                         "type"
-#                     ]
+#                     ],
+#                     "type": "object"
 #                 }
-#             ]
+#             ],
+#             "minItems": 0,
+#             "type": "array"
 #         },
 #         "license": {
-#             "type": "string",
-#             "description": "license of package in SPDX format"
+#             "description": "license of package in SPDX format",
+#             "type": "string"
 #         },
 #         "name": {
-#             "type": "string",
-#             "description": "package name"
+#             "description": "package name",
+#             "type": "string"
 #         },
 #         "rdepends": {
-#             "type": "array",
-#             "minItems": 0,
 #             "items": {
 #                 "description": "runtime dependencies",
 #                 "type": "string"
-#             }
+#             },
+#             "minItems": 0,
+#             "type": "array"
 #         },
 #         "recipes": {
-#             "type": "array",
 #             "description": "recipes used to build this package",
 #             "items": [
 #                 {
-#                     "type": "string",
-#                     "description": "path to recipe relative to layer root"
+#                     "description": "path to recipe relative to layer root",
+#                     "type": "string"
 #                 }
-#             ]
+#             ],
+#             "type": "array"
 #         }
 #     },
-#     "additionalProperties": false,
 #     "required": [
+#         "additionalFiles",
 #         "cveproduct",
 #         "depends",
 #         "files",
@@ -124,9 +152,9 @@
 #         "name",
 #         "rdepends",
 #         "recipes"
-#     ]
+#     ],
+#     "type": "object"
 # }
-#
 # Using these information one could trace back individual files
 # from an image
 
@@ -134,10 +162,20 @@
 SWINVENTORYDIR = "${WORKDIR}/swinventory"
 # global storage
 SWINVENTORY_DEPLOY ??= "${DEPLOY_DIR}/swinventory"
-# pattern to probe for detecting direct file copies
+# (glob) pattern to probe for detecting direct file copies
 SWINVENTORY_SRC_PATTERN ??= "${S}/** ${S} ${WORKDIR}"
 # mime types to treat as binaries
-SWINVENTORY_EXEC_MIME ??= "application/x-pie-executable application/x-executable"
+SWINVENTORY_EXEC_MIME ??= "application/x-pie-executable application/x-executable application/x-sharedlib"
+# exceptions for overriding autom. determined task order
+# be sure to set both: 'after' and 'before'
+SWINVENTORY_EXCEPT_buildtools-tarball[after] = ""
+SWINVENTORY_EXCEPT_buildtools-tarball[before] = ""
+SWINVENTORY_EXCEPT_base-passwd[after] = "do_package"
+SWINVENTORY_EXCEPT_base-passwd[before] = "do_build"
+SWINVENTORY_EXCEPT_package-index[after] = ""
+SWINVENTORY_EXCEPT_package-index[before] = ""
+# include files matching (glob) pattern into additionalFiles
+SWINVENTORY_ADDFILES_PATTERN ??= ""
 
 def swinventory_sanitizes_recipe_paths(d, _in):
     import os
@@ -151,7 +189,7 @@ def swinventory_sanitize_list(_list):
         return []
     if isinstance(_list, str):
         _list = _list.split(" ")
-    _list = set(x for x in _list if x)
+    _list = set(x.strip("\t ") for x in _list if x)
     return sorted(list(_list))
 
 def swinventory_create_depends(d):
@@ -164,6 +202,22 @@ def swinventory_create_depends(d):
             if not p:
                 continue
         res.append(p)
+    return res
+
+def swinventory_get_aliases(d, pkg):
+    import subprocess
+    res = {}
+    try:
+        out = subprocess.check_output(["grep", "-rh", "PKG_{}: ".format(pkg), d.expand("${PKGDATA_DIR}")],
+                                      universal_newlines=True).split("\n")
+        for o in out:
+            _o = o.split(":")
+            _pkg = _o[0].replace("PKG_", "").strip()
+            _alias = _o[1].strip()
+            if _pkg != _alias:
+                res[_pkg] = _alias 
+    except:
+        pass
     return res
 
 def swinventory_hash_file(_file, _hashsource=None, abspath=False):
@@ -213,6 +267,23 @@ def swinventory_getsrc_from_file(d, file):
         _clean = _clean[1:]
     bb.note("No found match for > {}".format(file))
     return None
+
+def swinventory_get_additionalfiles(d):
+    import glob
+    res = []
+    for _pattern in d.getVar("SWINVENTORY_ADDFILES_PATTERN").split(" "):
+        if not _pattern or not _pattern.strip():
+            continue
+        for _file in glob.glob(_pattern):
+            _tmp = swinventory_hash_file(os.path.basename(_file), _file)
+            if _tmp:
+                try:
+                    with open(_file) as i:
+                        _tmp["content"] = i.read() 
+                except:
+                    pass
+                res.append(_tmp)
+    return res
 
 def swinventory_create_filelist_target(d, pkg):
     import os
@@ -283,13 +354,14 @@ def swinventory_create_packages(d, pkg, file_function):
 def swinventory_create_dummy_package(d, pkg, depends):
     import re
     return {
-            "name": pkg,
-            "recipes": swinventory_sanitize_list(swinventory_sanitizes_recipe_paths(d, x) for x in d.getVar("BBINCLUDED").split(" ") if x),
-            "depends": swinventory_sanitize_list(depends),
-            "rdepends": swinventory_sanitize_list(re.sub(r"\(.*?\)", "", d.getVar("RDEPENDS_{}".format(pkg)) or "")),
+            "additionalFiles": swinventory_get_additionalfiles(d),
             "cveproduct": d.getVar("CVE_PRODUCT") or d.getVar("BPN"),
+            "depends": swinventory_sanitize_list(depends),
             "files": [],
-            "license": d.getVar("LICENSE_{}".format(pkg)) or d.getVar("LICENSE")
+            "license": d.getVar("LICENSE_{}".format(pkg)) or d.getVar("LICENSE"),
+            "name": pkg,
+            "rdepends": swinventory_sanitize_list(re.sub(r"\(.*?\)", "", d.getVar("RDEPENDS_{}".format(pkg)) or "")),
+            "recipes": swinventory_sanitize_list(swinventory_sanitizes_recipe_paths(d, x) for x in d.getVar("BBINCLUDED").split(" ") if x),
            }
 
 python do_swinventory() {
@@ -302,12 +374,23 @@ python do_swinventory() {
        bb.data.inherits_class('nativesdk', d) or \
        bb.data.inherits_class('cross', d) or \
        bb.data.inherits_class('nopackages', d):
-       pkg = d.getVar("PN")
-       with open(os.path.join(d.expand("${SWINVENTORYDIR}"), "{}.json".format(pkg)), "w") as o:
-            json.dump(swinventory_create_packages(d, pkg, swinventory_create_filelist_nontarget),
-                      o,
-                      indent=2,
-                      sort_keys=True)
+        pkg = d.getVar("PN")
+        with open(os.path.join(d.expand("${SWINVENTORYDIR}"), "{}.json".format(pkg)), "w") as o:
+                json.dump(swinventory_create_packages(d, pkg, swinventory_create_filelist_nontarget),
+                        o,
+                        indent=2,
+                        sort_keys=True)
+        # now catch all PROVIDES overrides
+        for _pkg in d.expand("${PROVIDES}").split(" "):
+            if _pkg != pkg or (not _pkg or not _pkg.strip()):
+                continue
+            if _pkg.startswith("virtual/"):
+                _pkg = _pkg.replace("virtual/", "", 1)
+            with open(os.path.join(d.expand("${SWINVENTORYDIR}"), "{}.json".format(_pkg)), "w") as o:
+                json.dump(swinventory_create_dummy_package(d, _pkg, [pkg]),
+                        o,
+                        indent=2,
+                        sort_keys=True)
     else:
         _pkgs = [os.path.basename(x.path) for x in os.scandir(d.getVar("PKGDEST")) if os.path.isdir(x.path)]
         for pkg in _pkgs:
@@ -326,6 +409,31 @@ python do_swinventory() {
                         o,
                         indent=2,
                         sort_keys=True)
+        # now catch all the things created due to debian.bbclass renaming
+        # for these another dummy package is created which links to the
+        # rightly named package
+        for _pkg in _pkgs:
+            for pkg, alias in swinventory_get_aliases(d, _pkg).items():
+                if not pkg or not pkg.strip():
+                    continue
+                if not alias or not alias.strip():
+                    continue
+                with open(os.path.join(d.expand("${SWINVENTORYDIR}"), "{}.json".format(alias)), "w") as o:
+                    json.dump(swinventory_create_dummy_package(d, alias, [pkg]),
+                            o,
+                            indent=2,
+                            sort_keys=True)
+        # now catch all PROVIDES overrides
+        for pkg in d.expand("${PROVIDES}").split(" "):
+            if pkg in _pkgs or (not pkg or not pkg.strip()):
+                continue
+            if pkg.startswith("virtual/"):
+                pkg = pkg.replace("virtual/", "", 1)
+            with open(os.path.join(d.expand("${SWINVENTORYDIR}"), "{}.json".format(pkg)), "w") as o:
+                json.dump(swinventory_create_dummy_package(d, pkg, _pkgs),
+                        o,
+                        indent=2,
+                        sort_keys=True)
 }
 do_swinventory[doc] = "Create an inventory of each package"
 do_swinventory[vardepexclude] += "BBPATH BBINCLUDED"
@@ -335,15 +443,10 @@ do_swinventory[sstate-inputdirs] = "${SWINVENTORYDIR}"
 do_swinventory[sstate-outputdirs] = "${SWINVENTORY_DEPLOY}/"
 
 python() {
-    # known exceptions
-    _exceptions = {
-        "buildtools-tarball": { "after": "", "before": "" },
-        "base-passwd": { "after": "do_package", "before": "do_build" }
-    }
     _pn = d.getVar("PN")
-    if _pn in _exceptions:
-        _after = _exceptions[_pn]["after"]
-        _before = _exceptions[_pn]["before"]
+    if d.getVarFlags("SWINVENTORY_EXCEPT_{}"):
+        _after = d.getVarFlag("SWINVENTORY_EXCEPT_{}".format(_pn), "after") or ""
+        _before = d.getVarFlag("SWINVENTORY_EXCEPT_{}".format(_pn), "before") or ""
     else:
         _after = "do_unpack"
         _needles = ["do_package" if not bb.data.inherits_class("nopackages", d) else "", "do_install"]
@@ -354,7 +457,7 @@ python() {
                 _after = n
                 break
         _before = "do_build"
-        _needles = ["do_populate_sysroot", "do_rmwork", "do_build"]
+        _needles = ["do_deploy", "do_populate_sysroot", "do_rmwork", "do_build"]
         for n in _needles:
             if "task" in (d.getVarFlags(n) or []):
                 _before = n
