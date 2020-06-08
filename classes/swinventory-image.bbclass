@@ -7,6 +7,10 @@ def swinventory_image_get_package(d, name, out):
     import os
     import json
 
+    name = name.strip()
+    if name in d.getVar("ASSUME_PROVIDED").split(" "):
+        # ASSUME_PROVIDED packages can be safely ignored
+        return
     try:
         with open(os.path.join(d.getVar("SWINVENTORY_DEPLOY"), name + ".json")) as i:
             _in = json.load(i)
