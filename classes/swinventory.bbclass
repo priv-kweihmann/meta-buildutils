@@ -342,19 +342,20 @@ def swinventory_create_filelist_nontarget(d, pkg):
             res.append(_item)
     return res
 
-def swinventory_create_packages(d, pkg, file_function):
+def swinventory_create_packages(d, pkg, file_function, native=False):
     import re
     return {
-            "name": pkg,
-            "recipes": swinventory_sanitize_list(swinventory_sanitizes_recipe_paths(d, x) for x in d.getVar("BBINCLUDED").split(" ") if x),
-            "depends": swinventory_sanitize_list(swinventory_create_depends(d)),
-            "rdepends": swinventory_sanitize_list(re.sub(r"\(.*?\)", "", d.getVar("RDEPENDS_{}".format(pkg)) or "")),
+            "additionalFiles": swinventory_get_additionalfiles(d),
             "cveproduct": d.getVar("CVE_PRODUCT") or d.getVar("BPN"),
+            "depends": swinventory_sanitize_list(swinventory_create_depends(d)),
             "files": file_function(d, pkg),
-            "license": d.getVar("LICENSE_{}".format(pkg)) or d.getVar("LICENSE")
+            "license": d.getVar("LICENSE_{}".format(pkg)) or d.getVar("LICENSE"),
+            "name": pkg,
+            "rdepends": swinventory_sanitize_list(re.sub(r"\(.*?\)", "", d.getVar("RDEPENDS_{}".format(pkg)) or "")) if not native else [],
+            "recipes": swinventory_sanitize_list(swinventory_sanitizes_recipe_paths(d, x) for x in d.getVar("BBINCLUDED").split(" ") if x),
            }
 
-def swinventory_create_dummy_package(d, pkg, depends):
+def swinventory_create_dummy_package(d, pkg, depends, native=False):
     import re
     return {
             "additionalFiles": swinventory_get_additionalfiles(d),
@@ -363,7 +364,7 @@ def swinventory_create_dummy_package(d, pkg, depends):
             "files": [],
             "license": d.getVar("LICENSE_{}".format(pkg)) or d.getVar("LICENSE"),
             "name": pkg,
-            "rdepends": swinventory_sanitize_list(re.sub(r"\(.*?\)", "", d.getVar("RDEPENDS_{}".format(pkg)) or "")),
+            "rdepends": swinventory_sanitize_list(re.sub(r"\(.*?\)", "", d.getVar("RDEPENDS_{}".format(pkg)) or "")) if not native else [],
             "recipes": swinventory_sanitize_list(swinventory_sanitizes_recipe_paths(d, x) for x in d.getVar("BBINCLUDED").split(" ") if x),
            }
 
@@ -380,19 +381,19 @@ python do_swinventory() {
        bb.data.inherits_class('nopackages', d):
         pkg = d.getVar("PN")
         with open(os.path.join(d.expand("${SWINVENTORYDIR}"), "{}.json".format(pkg)), "w") as o:
-                json.dump(swinventory_create_packages(d, pkg, swinventory_create_filelist_nontarget),
+                json.dump(swinventory_create_packages(d, pkg, swinventory_create_filelist_nontarget, True),
                         o,
                         indent=2,
                         sort_keys=True)
                 _collected_manifests.append(o.name)
         # now catch all PROVIDES overrides
         for _pkg in d.expand("${PROVIDES}").split(" "):
-            if _pkg != pkg or (not _pkg or not _pkg.strip()):
+            if _pkg == pkg or (not _pkg or not _pkg.strip()):
                 continue
             if _pkg.startswith("virtual/"):
                 _pkg = _pkg.replace("virtual/", "", 1)
             with open(os.path.join(d.expand("${SWINVENTORYDIR}"), "{}.json".format(_pkg)), "w") as o:
-                json.dump(swinventory_create_dummy_package(d, _pkg, [pkg]),
+                json.dump(swinventory_create_dummy_package(d, _pkg, [pkg], True),
                         o,
                         indent=2,
                         sort_keys=True)
