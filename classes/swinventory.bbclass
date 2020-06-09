@@ -455,7 +455,7 @@ do_swinventory[sstate-outputdirs] = "${SWINVENTORY_DEPLOY}/"
 
 python() {
     _pn = d.getVar("PN")
-    if d.getVarFlags("SWINVENTORY_EXCEPT_{}"):
+    if d.getVarFlags("SWINVENTORY_EXCEPT_{}".format(_pn)):
         _after = d.getVarFlag("SWINVENTORY_EXCEPT_{}".format(_pn), "after") or ""
         _before = d.getVarFlag("SWINVENTORY_EXCEPT_{}".format(_pn), "before") or ""
     else:
