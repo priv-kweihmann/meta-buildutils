@@ -18,7 +18,7 @@ def swinventory_image_get_package(d, name, out, files):
     try:
         with open(os.path.join(d.getVar("SWINVENTORY_DEPLOY"), name + ".json")) as i:
             _in = json.load(i)
-            files.append(i)
+            files.append(i.name)
             out[name] = _in
             for _n in set(_in["depends"] + _in["rdepends"]):
                 if _n not in out:
