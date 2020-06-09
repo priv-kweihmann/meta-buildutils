@@ -22,7 +22,7 @@ def swinventory_image_get_package(d, name, out, files):
             out[name] = _in
             for _n in set(_in["depends"] + _in["rdepends"]):
                 if _n not in out:
-                    swinventory_image_get_package(d, _n, out)
+                    swinventory_image_get_package(d, _n, out, files)
     except FileNotFoundError:
         bb.warn("No swinventory for {} found".format(name))
 
