@@ -9,7 +9,7 @@
 # each found issue will be reported as a warning to console
 
 # variables known to be build host specific
-HASHDOG_CULP ?= ""
+HASHDOG_CULP ?= "DATETIME"
 # exclude the following variables as they are not being used for
 # creating the task hash
 HASHDOG_EXCL ?= "${BB_HASHCONFIG_WHITELIST} ${BB_HASHBASE_WHITELIST} prefix"
