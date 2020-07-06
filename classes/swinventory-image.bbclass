@@ -7,6 +7,13 @@ inherit swinventory
 # can be e.g. used by a postfunc to do further processing 
 SWINVENTORY_IMAGE_COLLECTED_MANIFESTS = ""
 
+addhandler swinventory_image_eventhandler
+swinventory_image_eventhandler[eventmask] = "bb.event.SanityCheck"
+python swinventory_image_eventhandler() {
+    if "swinventory" not in [x for x in d.getVar("INHERIT").split(" ") if x]:
+        bb.error("swinventory-image requires 'swinventory' in global 'INHERIT'")
+}
+
 def swinventory_image_get_package(d, name, out, files):
     import os
     import json
