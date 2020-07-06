@@ -1,25 +1,38 @@
 ## SPDX-License-Identifier: BSD-2-Clause
-## Copyright (c) 2019, Konrad Weihmann
+## Copyright (c) 2019-2020, Konrad Weihmann
 ##
 
 ## Try to identify site-packages as well
-## be aware that the naming package vs. site-package
-## might not be a 100% match
 PYTHON_IDENT_SITEPACKAGES = "1"
 
-def get_modules_from_path(path_glob, strip_path, _ignore = ["__pycache__", "lib-dynload"]):
+def get_modules_from_path(path_glob, strip_path, _ignore = ["__pycache__"]):
     import glob
-    modules = []
-    for _gfile in glob.glob(path_glob):
-        if not _gfile.endswith(".py"):
+    modules = set()
+    if os.path.isdir(path_glob):
+        path_glob += "/*"
+    _files = glob.glob(path_glob, recursive=True)
+    if not _files:
+        _files = [path_glob.replace("*", "")]
+    for _gfile in _files:
+        _name, _ext = os.path.splitext(_gfile)
+        if _ext not in [".py", ".so"]:
             continue
-        _gfile_clean = _gfile[:-3].replace(strip_path, "").lstrip("/")
+        while "." in os.path.basename(_name):
+            _name = _name.rsplit(".", 1)[0]
+        _gfile_clean = _name.replace(strip_path, "").lstrip("/")
+        if _gfile_clean.endswith("__init__"):
+            continue
         _clean_name_chunks = [x for x in _gfile_clean.split("/") if x]
+        if _clean_name_chunks[0] == "lib-dynload":
+            _clean_name_chunks = _clean_name_chunks[1:]
         if any(list(set(_clean_name_chunks).intersection(_ignore))):
             continue
-        for i in range(len(_clean_name_chunks), 0, -1):
-            modules += [".".join(_clean_name_chunks[0:i])]
-    return modules
+        for i in range(0, len(_clean_name_chunks) - 1):
+            for j in range(len(_clean_name_chunks), 0, -1):
+                if _clean_name_chunks[i:j]:
+                    modules.add(".".join(_clean_name_chunks[i:j]))
+        modules.add(_clean_name_chunks[-1])
+    return sorted(list(modules))
 
 def get_python_modules(d):
     import json
@@ -47,18 +60,23 @@ def get_python_modules(d):
         for k,v in _module_dict.items():
             modules[k] = []
             for _file in [x for x in v["files"]]:
-                modules[k] += list(set(get_modules_from_path(os.path.join(d.getVar("STAGING_DIR_TARGET"), d.expand(_file).lstrip("/")), _strip_path) + \
-                             get_modules_from_path(os.path.join(d.getVar("STAGING_DIR_TARGET"), d.expand(_file).lstrip("/")) + "/**/*.py", _strip_path)))
+                modules[k] += get_modules_from_path(os.path.join(d.getVar("STAGING_DIR_TARGET"), d.expand(_file).lstrip("/")), _strip_path)
+                if k == "core":
+                    # backfill some not really obvious exceptions in core
+                    modules[k] += ["builtins", "sys", "gc", "itertools"]
     else:
         bb.warn("Can't find python-package-manifest '{}' anywhere".format(d.getVar("PYTHON_MODULE_MANIFEST")))
-    
+   
     if d.getVar("PYTHON_IDENT_SITEPACKAGES") == "1":
         _strip_path = os.path.join(d.getVar("STAGING_DIR_TARGET"), d.getVar("PYTHON_SITEPACKAGES_DIR").lstrip("/"))
-        for _dir in os.listdir(_strip_path):
-            if _dir.endswith(".egg-info"):
-                continue
-            modules[_dir] = list(set(get_modules_from_path(os.path.join(_strip_path, _dir) + "**/*.py", _strip_path) + \
-                                    get_modules_from_path(os.path.join(_strip_path, _dir) + "*.py", _strip_path)))
+        if os.path.exists(_strip_path):
+            for _dir in os.listdir(_strip_path):
+                if _dir.endswith(".egg-info"):
+                    continue
+                modules[_dir] = get_modules_from_path(os.path.join(_strip_path, _dir) + "**/*.py", _strip_path)
+                if any(modules[_dir]):
+                    modules[_dir] += ["{}.{}".format(_dir, x) for x in modules[_dir]]
+                    modules[_dir] += [_dir]
     return modules
 
 def get_package_dependencies(d, element):
@@ -68,26 +86,40 @@ def get_package_dependencies(d, element):
 python do_ident_python_packages() {
     import os
     import bb
-    import dis
+    import ast
+    from collections import namedtuple
 
     _modules = get_python_modules(d)
     _package_dir = d.getVar("PKGDEST")
     
     for _dir in os.listdir(_package_dir):
         _dir_wo_pn = _dir.replace(d.getVar("PN"), "", 1)
-        _imports = []
+        _imports = set()
         _full_path = os.path.join(_package_dir, _dir)
         for _file in buildutils_get_files_by_extension_or_shebang(d, _full_path, ".*python", [".py"]):
             try:
                 bb.note("Check on file {}".format(_file))
-                with open(_file) as f:
-                    instructions = dis.get_instructions(f.read())
-                    imports = [__ for __ in instructions if 'IMPORT' in __.opname]
-                    for instr in imports:
-                        _imports.append(instr.argval)
+                with open(_file, "rb") as f:
+                    root = ast.parse(f.read(), _file)
+                    for node in ast.iter_child_nodes(root):
+                        if isinstance(node, ast.Import):
+                            name = None
+                        elif isinstance(node, ast.ImportFrom):  
+                            name = node.module
+                        else:
+                            continue
+                        for n in node.names:
+                            _imports.add(name or n.name)
             except:
                 pass
-        _imports = list(set(_imports))
+        
+        _self_provided = ["__self__"]
+        # the modules code itself to the module list
+        _gfull_path_base = os.path.join(_full_path, d.getVar("PYTHON_SITEPACKAGES_DIR").lstrip("/"))
+        if os.path.exists(_gfull_path_base):
+            _modules["__self__"] = get_modules_from_path(_gfull_path_base + "/**/*.py", _gfull_path_base) + \
+                                   get_modules_from_path(_gfull_path_base + "/**/*.so", _gfull_path_base)
+        _imports = list(_imports)
 
         bb.note("{} requires following python-imports: {}".format(_dir, _imports))
         if not any(_imports):
@@ -95,19 +127,23 @@ python do_ident_python_packages() {
 
         _depends = get_package_dependencies(d, _dir)
         _depends = [x for x in _depends if x.startswith(d.getVar("PYTHON_PN"))]
-        _depends_stripped = [x.replace(d.getVar("PYTHON_PN") + "-", "", 1) for x in _depends]
+        _depends_stripped = [x.replace(d.getVar("PYTHON_PN") + "-", "", 1) for x in _depends] + _self_provided
 
-        _needed_depends = ["core"]
+        _needed_depends = ["core"] + _self_provided
 
         for _imp in sorted(_imports):
             found = False
-            for k,v in _modules.items():
-                if _imp in v:
-                    found = True
-                    if k not in _needed_depends:
-                        _needed_depends.append(k)
+            _chunks = _imp.split(".")
+            for i in range(len(_chunks), 0, -1):
+                for k,v in _modules.items():
+                    if ".".join(_chunks[0:i]) in v:
+                        found = True
+                        bb.note("import {}:{} is satisfied by {}".format(".".join(_chunks[0:i]), _imp, k))
+                        if k not in _needed_depends:
+                            _needed_depends.append(k)
+                        break
             if not found:
-                bb.note("No package found for import '{}'".format(_imp))
+                bb.warn("No package found for import '{}'".format(_imp))
             if not found and "misc" not in _needed_depends:
                 _needed_depends.append("misc")
         
