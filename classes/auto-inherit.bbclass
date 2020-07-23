@@ -45,7 +45,12 @@ python auto_inherit_handler() {
     import bb
     from bb.parse.parse_py import BBHandler
 
+    # if filename is not set it's likely a call from
+    # further down this function so ignore it
+    if not e.fn:
+        return
     res = []
+    __saved_handler = d.getVar("__BBHANDLERS", False)
     for item in [x for x in d.getVar("AUTO_INHERIT_CONF").split(" ") if x]:
         args = dict(e.split('=') for e in item.split(';'))
         include = True
@@ -59,8 +64,19 @@ python auto_inherit_handler() {
             except Exception as e:
                 bb.warn("Prop-Func {} is not well-formed: {}".format(prop_func, e))
         if include:
-            bb.note("Inherting {} caused by auto-inherit".format(args["BBClass"]))   
+            bb.note("Inheriting {} caused by auto-inherit".format(args["BBClass"]))
             BBHandler.inherit(args["BBClass"], "lb-inherit", 1, d)
+            # now check if the new classes include some more handler, we should be registered
+            _new_handler = [x for x in d.getVar("__BBHANDLERS", False) if x not in __saved_handler]
+            for new_handler in _new_handler:
+                _nh_filename = d.getVarFlag(new_handler, "filename", False)
+                _nh_line = int(d.getVarFlag(new_handler, "lineno", False))
+                _nh_eventmask = (d.getVarFlag(new_handler, "eventmask") or "").split()
+                bb.event.register(new_handler, d.getVar(new_handler, False), _nh_eventmask, _nh_filename, _nh_line)
+            # in case there are new handler to be fired do that now
+            if _new_handler:
+                bb.event.fire(bb.event.RecipePreFinalise(None), d)
+                __saved_handler = d.getVar("__BBHANDLERS", False)
     if d.getVar("AUTO_INHERIT_CONF"):
         for e in d.keys():
             if d.getVarFlag(e, 'task'):
