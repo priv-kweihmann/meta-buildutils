@@ -41,6 +41,8 @@ KCONFIG_SANITY_FRAGMENT_NEW_UNSET = "note"
 KCONFIG_SANITY_FRAGMENT_OLD_UNSET_EXISTS = "error"
 KCONFIG_SANITY_FRAGMENT_OLD_NA = "note"
 
+inherit python3-dir
+
 def call_logging_function(d, key, msg):
     import bb
     getattr(bb, d.getVar(key))(msg) 
@@ -133,6 +135,9 @@ python do_kconfig_sanity_fragement() {
     if d.getVar("KCONFIG_SANITY_FRAGMENT_EVAL") != "1":
         return
 
+    import sys
+    sys.path.append(os.path.join(d.getVar("STAGING_DIR_NATIVE"), d.getVar("PYTHON_SITEPACKAGES_DIR")[1:]))
+
     for item in get_config_files(d):
         known_symbols[os.path.basename(item)] = convert_to_symbol_table(d, get_symbols_from_fragement(d, item), item, {})
     
@@ -163,6 +168,9 @@ python do_kconfig_sanity_result() {
 
     if d.getVar("KCONFIG_SANITY_FRAGMENT_EVAL") != "1":
         return
+
+    import sys
+    sys.path.append(os.path.join(d.getVar("STAGING_DIR_NATIVE"), d.getVar("PYTHON_SITEPACKAGES_DIR")[1:]))
 
     known_symbols = {}
     for item in get_config_files(d):
@@ -208,6 +216,10 @@ do_configure[postfuncs] += "do_kconfig_sanity_result"
 python do_kconfig_complete() {
     import os
     import bb
+
+    import sys
+    sys.path.append(os.path.join(d.getVar("STAGING_DIR_NATIVE"), d.getVar("PYTHON_SITEPACKAGES_DIR")[1:]))
+
     found_symbols = []
     if any([x for x in d.getVar("KCONFIG_SANITY_COMPAREFILES").split(" ") if os.path.isfile(x)]):
         cmp_config = [x for x in d.getVar("KCONFIG_SANITY_COMPAREFILES").split(" ") if os.path.isfile(x)][0]
