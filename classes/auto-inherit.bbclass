@@ -10,13 +10,13 @@
 ## root/path/foo but not into any other recipe
 ## this class is a great help
 
-## Ther configuration is done by the variable 
+## The configuration is done by the variable 
 ## AUTO_INHERIT_CONF
 
 ## To activate simple put INHERIT += "auto-inherit" into either
 ## your local.conf or into your distro.conf
 
-## The variable is contain space separated values
+## The variable does contain space separated values
 ## each value is formatted in the following way
 ## BBClass=<class>;props=[func_foo(d),func_foo2(d,param)]
 ##
@@ -25,14 +25,16 @@
 ## if all props-function return True the class under BBCLass will be
 ## inherited into the current recipe
 
-## For convinience several premade function can be found at the bottom
+## For convenience several premade function can be found at the bottom
 ## of this file
 
 AUTO_INHERIT_CONF ?= ""
 
 ## Example:
-## inherit class foo on all recipe whcih depend on recipe BAR and are licensed under any GPL-variant
+## inherit class foo on all recipes located at meta-buildutils/recipes-foo
 ## AUTO_INHERIT_CONF = "BBClass=python-speedups;props=[auto_inherit_is_at_path(d,'meta-buildutils/recipes-foo/',False)]"
+## or recipe is licensed under GPL and depends on "libfoo"
+## AUTO_INHERIT_CONF = "BBClass=python-speedups;props=[auto_inherit_contains_package(d,'libfoo'), auto_inherit_license(d,'GPL.*')]"
 
 # Variables to be masked out to avoid hash corruption
 AUTO_INHERIT_MASK_VARS ?= "BBINCLUDED"
