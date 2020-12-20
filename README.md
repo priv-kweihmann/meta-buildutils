@@ -9,7 +9,7 @@
 
 A collection of build utils to be used in with YOCTO
 
-## Avaiable classes
+## Available classes
 
 | class                | summary                                                                                                   | documentation                        |
 | -------------------- | --------------------------------------------------------------------------------------------------------- | ------------------------------------ |
@@ -24,3 +24,9 @@ A collection of build utils to be used in with YOCTO
 | rootfs-chart         | generate dot graphs for a specific image (packages, used recipes)                                         | [docu](docs/rootfs-chart.md)         |
 | swinventory          | generate a manifest for each package containing things like used source files, used recipes and much more | [docu](docs/swinventory.md)          |
 | swinventory-image    | generate a manifest based on `swinventory` for packages of an image                                       | [docu](docs/swinventory-image.md)    |
+
+## Available scripts
+
+| script | summary                            | documentation                  |
+| ------ | ---------------------------------- | ------------------------------ |
+| unused | identify unused recipes in a layer | [docu](docs/scripts-unused.md) |

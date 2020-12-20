@@ -1,0 +1,141 @@
+#!/usr/bin/env python3
+
+# SPDX-License-Identifier: BSD-2-Clause
+# Copyright (c) 2020, Konrad Weihmann
+
+import argparse
+import copy
+import json
+import os
+import sys
+
+try:
+    from oelint_parser.cls_item import Variable
+    from oelint_parser.cls_stash import Stash
+    from oelint_parser.const_vars import get_base_varset
+    from oelint_parser.helper_files import expand_term
+    from oelint_parser.helper_files import guess_recipe_name
+except ImportError:
+    sys.stderr.write(
+        "Can't import 'oelint-parser'. Please run 'pip install oelint-parser' to enable this script here\n")
+    sys.exit(-1)
+
+def get_ignores_file(args):
+    _res = set(args.ignore)
+    if os.path.exists(os.path.join(args.layerdir, ".unusedignore")):
+        with open(os.path.join(args.layerdir, ".unusedignore")) as i:
+            for _path in json.load(i):
+                _res.add(os.path.join(args.layerdir, _path))
+    return list(_res)
+
+def create_parser():
+    parser = argparse.ArgumentParser(description='unused recipe finder')
+    parser.add_argument("--ignore", default=[],
+                        action='append', help="Ignore paths")
+    parser.add_argument("layerdir", help="Path to layer to check")
+    x = parser.parse_args()
+    x.ignore = get_ignores_file(x)
+    return x
+
+def walk_dir(args):
+    _res = {}
+    _alias = {}
+    for root, dirs, files in os.walk(args.layerdir):
+        for f in files:
+            _filepath = os.path.join(root, f)
+            _filename, _ext = os.path.splitext(f)
+            if _ext not in [".bb", ".bbappend", ".bbclass"]:
+                continue
+
+            _depends = set()
+            _rdepends = set()
+
+            _stash = Stash(quiet=True)
+            _stash.AddFile(_filepath)
+            # Get identifiers of the recipe
+            _keys = [guess_recipe_name(_filepath)]
+            # Check for aliases
+            for item in _stash.GetItemsFor(attribute=Variable.ATTR_VAR, attributeValue="PROVIDES"):
+                for x in [expand_term(_stash, _filepath, y) for y in item.get_items()]:
+                    _alias[x] = _keys[0]
+            for item in _stash.GetItemsFor(attribute=Variable.ATTR_VAR, attributeValue="RPROVIDES"):
+                for x in [expand_term(_stash, _filepath, y) for y in item.get_items()]:
+                    _alias[x] = _keys[0]
+            # extract packages first
+            _packages = set(get_base_varset()["PACKAGES"])
+            for pkg in _stash.GetItemsFor(attribute=Variable.ATTR_VAR, attributeValue="PACKAGES"):
+                _packages.update([expand_term(_stash, _filepath, y)
+                                  for y in item.get_items()])
+
+            # packageconfig
+            _pcflags = set((x.Flag, x.VarValueStripped) for x in _stash.GetItemsFor(
+                attribute=Variable.ATTR_VAR, attributeValue="PACKAGECONFIG"))
+            _pc = set()
+            for pkg in _stash.GetItemsFor(attribute=Variable.ATTR_VAR, attributeValue="PACKAGECONFIG"):
+                _pc.update(pkg.get_items())
+            for pc in _pc:
+                for _fl in _pcflags:
+                    if pc == _fl[0]:
+                        _deps = _fl[1].split(",")
+                        if len(_deps) < 3:
+                            continue
+                        _depends.add(_deps[2])
+
+            # Get runtime dependencies
+            for pkg in _packages:
+                for item in _stash.GetItemsFor(attribute=Variable.ATTR_VAR, attributeValue="RDEPENDS_{}".format(pkg)):
+                    _rdepends.update([expand_term(_stash, _filepath, y)
+                                      for y in item.get_items()])
+            for item in _stash.GetItemsFor(attribute=Variable.ATTR_VAR, attributeValue="RDEPENDS_${PN}"):
+                _rdepends.update([expand_term(_stash, _filepath, y)
+                                  for y in item.get_items()])
+            for item in _stash.GetItemsFor(attribute=Variable.ATTR_VAR, attributeValue="IMAGE_INSTALL"):
+                _rdepends.update([expand_term(_stash, _filepath, y)
+                                  for y in item.get_items()])
+            for item in _stash.GetItemsFor(attribute=Variable.ATTR_VAR, attributeValue="EXTRA_IMAGEDEPENDS"):
+                _rdepends.update([expand_term(_stash, _filepath, y)
+                                  for y in item.get_items()])
+
+            # Get build time dependencies
+            for item in _stash.GetItemsFor(attribute=Variable.ATTR_VAR, attributeValue="DEPENDS"):
+                _depends.update([expand_term(_stash, _filepath, y)
+                                 for y in item.get_items()])
+
+            if _keys[0] not in _res:
+                _res[_keys[0]] = {"filename": _filepath, "dependants": set()}
+            # create tree
+            for r in _rdepends:
+                if r not in _res:
+                    _res[r] = {"filename": _filepath, "dependants": set(_keys)}
+                else:
+                    _res[r]["dependants"].update(_keys)
+            for d in _depends:
+                if d not in _res:
+                    _res[d] = {"filename": _filepath, "dependants": set(_keys)}
+                else:
+                    _res[d]["dependants"].update(_keys)
+    # resolve aliases
+    for k, v in _res.items():
+        _deps = copy.deepcopy(v["dependants"])
+        for deps in v["dependants"]:
+            if deps in _alias:
+                _deps.add(_alias[deps])
+        v["dependants"] = _deps
+    return _res
+
+
+def evaluate(args, res):
+    for k, v in res.items():
+        if not v["dependants"] and \
+           not any(v["filename"].startswith(x) for x in args.ignore) and \
+           not any(v["filename"].endswith(x) for x in [".bbclass", "bbappend"]):
+            print("{} is likely not used in this layer".format(v["filename"]))
+
+
+def main():
+    _args = create_parser()
+    evaluate(_args, walk_dir(_args))
+
+
+if __name__ == '__main__':
+    main()
