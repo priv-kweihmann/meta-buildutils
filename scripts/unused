@@ -123,6 +123,8 @@ def walk_dir(args):
             if deps in _alias:
                 _deps.add(_alias[deps])
         v["dependants"] = _deps
+        if k in _alias:
+            _res[_alias[k]]["dependants"].add(k)
     return _res
 
 
