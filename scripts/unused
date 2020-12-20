@@ -32,6 +32,8 @@ def create_parser():
     parser = argparse.ArgumentParser(description='unused recipe finder')
     parser.add_argument("--ignore", default=[],
                         action='append', help="Ignore paths")
+    parser.add_argument("--remove", default=False,
+                        action='store_true', help="Automatically delete unused files")
     parser.add_argument("layerdir", help="Path to layer to check")
     x = parser.parse_args()
     x.ignore = get_ignores_file(x)
@@ -129,7 +131,11 @@ def evaluate(args, res):
         if not v["dependants"] and \
            not any(v["filename"].startswith(x) for x in args.ignore) and \
            not any(v["filename"].endswith(x) for x in [".bbclass", "bbappend"]):
-            print("{} is likely not used in this layer".format(v["filename"]))
+            if args.remove:
+                os.remove(v["filename"])
+                print("{} is likely unused and was removed".format(v["filename"]))
+            else:
+                print("{} is likely not used in this layer".format(v["filename"]))
 
 
 def main():
