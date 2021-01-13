@@ -223,6 +223,10 @@ def swinventory_get_aliases(d, pkg):
         pass
     return res
 
+def swinventory_get_recipe_file(d):
+    import os
+    return sorted([x for x in d.getVar("BBINCLUDED").split(" ") if x and os.path.exists(x)])
+
 def swinventory_hash_file(_file, _hashsource=None, abspath=False):
     import hashlib
     _hashsource = _hashsource or _file
@@ -352,7 +356,7 @@ def swinventory_create_packages(d, pkg, file_function, native=False):
             "license": d.getVar("LICENSE_{}".format(pkg)) or d.getVar("LICENSE"),
             "name": pkg,
             "rdepends": swinventory_sanitize_list(re.sub(r"\(.*?\)", "", d.getVar("RDEPENDS_{}".format(pkg)) or "")) if not native else [],
-            "recipes": swinventory_sanitize_list(swinventory_sanitizes_recipe_paths(d, x) for x in d.getVar("BBINCLUDED").split(" ") if x),
+            "recipes": swinventory_sanitize_list(swinventory_sanitizes_recipe_paths(d, x) for x in swinventory_get_recipe_file(d)),
            }
 
 def swinventory_create_dummy_package(d, pkg, depends, native=False):
@@ -365,7 +369,7 @@ def swinventory_create_dummy_package(d, pkg, depends, native=False):
             "license": d.getVar("LICENSE_{}".format(pkg)) or d.getVar("LICENSE"),
             "name": pkg,
             "rdepends": swinventory_sanitize_list(re.sub(r"\(.*?\)", "", d.getVar("RDEPENDS_{}".format(pkg)) or "")) if not native else [],
-            "recipes": swinventory_sanitize_list(swinventory_sanitizes_recipe_paths(d, x) for x in d.getVar("BBINCLUDED").split(" ") if x),
+            "recipes": swinventory_sanitize_list(swinventory_sanitizes_recipe_paths(d, x) for x in swinventory_get_recipe_file(d)),
            }
 
 python do_swinventory() {
