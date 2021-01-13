@@ -12,6 +12,8 @@ swinventory_image_eventhandler[eventmask] = "bb.event.SanityCheck"
 python swinventory_image_eventhandler() {
     if "swinventory" not in [x for x in d.getVar("INHERIT").split(" ") if x]:
         bb.error("swinventory-image requires 'swinventory' in global 'INHERIT'")
+    if "swinventory-image" in [x for x in d.getVar("INHERIT").split(" ") if x]:
+        bb.error("'swinventory-image' should not be put to global 'INHERIT'. Inherit it into the target image recipe only")
 }
 
 def swinventory_image_get_package(d, name, out, files):
