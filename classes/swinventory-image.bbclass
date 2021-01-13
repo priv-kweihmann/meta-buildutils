@@ -7,6 +7,11 @@ inherit swinventory
 # can be e.g. used by a postfunc to do further processing 
 SWINVENTORY_IMAGE_COLLECTED_MANIFESTS = ""
 
+# special sauce translation
+# translate the package that are linked to ASSUME_PROVIDED
+# and therefore are not run, so swinventory can catch them
+SWINVENTORY_ASSUME_PROVIDED_TRANSLATE ?= "bzip2-replacement-native:bzip2-native"
+
 addhandler swinventory_image_eventhandler
 swinventory_image_eventhandler[eventmask] = "bb.event.SanityCheck"
 python swinventory_image_eventhandler() {
@@ -19,6 +24,22 @@ python swinventory_image_eventhandler() {
 def swinventory_image_get_package(d, name, out, files):
     import os
     import json
+
+    # Handle the super special cases, such as
+    # bzip2-replacement-native being translated to bzip2-native
+    # which is by default in ASSUME_PROVIDED
+    # but the actual bzip2 recipe is never run
+    _secret_sauce = {}
+    for x in d.getVar("SWINVENTORY_ASSUME_PROVIDED_TRANSLATE").split(" "):
+        if not x:
+            continue
+        _chunks = x.split(":")
+        if len(_chunks) != 2:
+            continue
+        _secret_sauce[_chunks[0]] = _chunks[1]
+
+    if name in _secret_sauce:
+        name = _secret_sauce[name]
 
     name = name.strip()
     if name in d.getVar("ASSUME_PROVIDED").split(" "):
