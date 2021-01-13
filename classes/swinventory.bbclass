@@ -449,6 +449,18 @@ python do_swinventory() {
                         indent=2,
                         sort_keys=True)
                 _collected_manifests.append(o.name)
+        # now get all RPROVIDES
+        for pkg in _pkgs:
+            if not pkg or not pkg.strip():
+                continue
+            _rprovides = d.getVar(d.expand("RPROVIDES_{}".format(pkg))) or ""
+            for rprov in [x for x in _rprovides.split(" ") if x]:
+                with open(os.path.join(d.expand("${SWINVENTORYDIR}"), "{}.json".format(rprov)), "w") as o:
+                    json.dump(swinventory_create_dummy_package(d, rprov, [pkg]),
+                            o,
+                            indent=2,
+                            sort_keys=True)
+                    _collected_manifests.append(o.name)
     d.setVar("SWINVENTORY_COLLECTED_MANIFESTS", " ".join(_collected_manifests))
 }
 do_swinventory[doc] = "Create an inventory of each package"
