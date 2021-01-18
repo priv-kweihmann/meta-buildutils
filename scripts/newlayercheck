@@ -1,0 +1,226 @@
+#!/usr/bin/env python3
+
+# SPDX-License-Identifier: BSD-2-Clause
+# Copyright (c) 2021, Konrad Weihmann
+
+# This scripts check which recipes and other files
+# might create unwanted recipe updates or conflicts
+# with files already existing in the specified layers
+
+import argparse
+import copy
+import os
+import re
+import sys
+
+from packaging import version
+
+try:
+    from oelint_parser.cls_item import Variable
+    from oelint_parser.cls_stash import Stash
+    from oelint_parser.const_vars import get_base_varset
+    from oelint_parser.helper_files import expand_term
+    from oelint_parser.helper_files import guess_recipe_name
+    from oelint_parser.helper_files import guess_recipe_version
+except ImportError:
+    sys.stderr.write(
+        "Can't import 'oelint-parser'. Please run 'pip install oelint-parser' to enable this script here\n")
+    sys.exit(-1)
+
+FILES_EXCEPTIONS = [
+    "conf/layer.conf",
+    "README.md",
+    "README",
+    "COPYING.MIT",
+]
+
+
+def create_parser():
+    parser = argparse.ArgumentParser(description='New layer check')
+    parser.add_argument('--checks', default=['version', 'bbappend', 'files'], choices=[
+                        'version', 'bbappend', 'files'], nargs="+", help=argparse.SUPPRESS)
+    parser.add_argument('--disablecheck', default=[], choices=['version',
+                                                               'bbappend', 'files'], action="append", help="Disable check")
+    parser.add_argument("layerdirs", nargs="+", help="Layer paths to check")
+    parser.add_argument("newlayer", help="New layer path")
+
+    _tmp = parser.parse_args()
+    _tmp.checks = [x for x in _tmp.checks if x not in _tmp.disablecheck]
+    return _tmp
+
+
+def __get_layer_root(_args, path):
+    _curdir = os.path.dirname(path) if os.path.isfile(path) else path
+    while os.path.isdir(_curdir):
+        if _curdir == "/":
+            break
+        if os.path.exists(os.path.join(_curdir, "conf/layer.conf")):
+            return _curdir.rstrip("/")
+        _curdir = os.path.dirname(_curdir)
+    return ""
+
+
+def __get_layer_name(_args, path):
+    return os.path.basename(__get_layer_root(_args, path))
+
+
+def __get_recipe_info(_args, recipe):
+    _name = guess_recipe_name(recipe)
+
+    _stash = Stash(quiet=True)
+    _stash.AddFile(recipe)
+
+    res = {}
+
+    _inherits = set()
+    for item in _stash.GetItemsFor(filename=recipe, classifier=Variable.CLASSIFIER,
+                                   attribute=Variable.ATTR_VAR, attributeValue="inherit"):
+        _inherits.update(item.get_items())
+
+    _classextends = set()
+    for item in _stash.GetItemsFor(filename=recipe, classifier=Variable.CLASSIFIER,
+                                   attribute=Variable.ATTR_VAR, attributeValue="BBCLASSEXTEND"):
+        _classextends.update(item.get_items())
+
+    _x = _stash.GetItemsFor(filename=recipe, classifier=Variable.CLASSIFIER,
+                            attribute=Variable.ATTR_VAR, attributeValue="PN")
+    if not _x:
+        _x = guess_recipe_version(recipe)
+    else:
+        _x = expand_term(_stash, recipe, _x[0].VarValueStripped)
+    _pv = _x
+
+    # First hard set to a class recipe
+    if any(x in _inherits for x in ["native", "nativesdk", "cross"]):
+        res[_name] = {
+            "version": _pv,
+            "path": __get_path_relative_to_layer_root(_args, recipe)
+        }
+    else:
+        for x in _classextends:
+            res[_name + "-" + x] = {
+                "version": _pv,
+                "path": __get_path_relative_to_layer_root(_args, recipe)
+            }
+        res[_name] = {
+            "version": _pv,
+            "path": __get_path_relative_to_layer_root(_args, recipe)
+        }
+    return res
+
+
+def __get_path_relative_to_layer_root(_args, path):
+    return os.path.relpath(path, __get_layer_root(_args, path))
+
+
+def __append_matches(_args, recipes, append):
+    _append = os.path.basename(
+        re.sub("\.bbappend$", ".bb", append)).replace("%", ".*")
+    return [k for k, v in recipes.items() if re.match(_append, os.path.basename(v["path"]))]
+
+
+def walk_layer(_args, path):
+    _name = __get_layer_name(_args, path)
+    _files = {}
+    _bbappends = {}
+    _recipes = {}
+
+    for root, dirs, files in os.walk(path):
+        for f in files:
+            _filename_full = os.path.join(root, f)
+            _filename, _ext = os.path.splitext(f)
+            _relpath = __get_path_relative_to_layer_root(_args, _filename_full)
+
+            if _ext in [".bbappend"]:
+                _bbappends[_relpath] = _filename_full
+            elif _ext in [".bb"]:
+                _recipes = {**_recipes, **
+                            __get_recipe_info(_args, _filename_full)}
+            elif _relpath and _relpath not in FILES_EXCEPTIONS:
+                _files[_relpath] = _filename_full
+
+    return {
+        _name: {
+            "recipes": _recipes,
+            "files": _files,
+            "appends": _bbappends
+        }
+    }
+
+
+def eval_files(_args, _dict):
+    res = set()
+    _new_layer_name = __get_layer_name(_args, _args.newlayer)
+    for _layer in _args.layerdirs:
+        _layer_name = __get_layer_name(_args, _layer)
+        _override = [v for k, v in _dict[_new_layer_name]["files"].items(
+        ) if k in _dict[_layer_name]["files"].keys() and k]
+        res.update(__get_path_relative_to_layer_root(_args, x)
+                   for x in _override)
+    return res
+
+
+def eval_append(_args, _dict):
+    res = set()
+    _new_layer_name = os.path.basename(_args.newlayer.rstrip("/"))
+    for _layer in _args.layerdirs:
+        _layer_name = __get_layer_name(_args, _layer)
+        _override = [v for k, v in _dict[_new_layer_name]["appends"].items() if any(
+            __append_matches(_args, _dict[_layer_name]["recipes"], k))]
+        res.update(os.path.join(
+            _new_layer_name, __get_path_relative_to_layer_root(_args, x)) for x in _override)
+    return res
+
+
+def eval_recipe(_args, _dict):
+    res = set()
+    _new_layer_name = __get_layer_name(_args, _args.newlayer)
+    for _layer in _args.layerdirs:
+        _layer_name = __get_layer_name(_args, _layer)
+        for nk, nv in _dict[_new_layer_name]["recipes"].items():
+            if nv["version"] == "git":
+                nv["version"] = str(sys.maxsize)
+            for lk, lv in _dict[_layer_name]["recipes"].items():
+                if lk != nk:
+                    continue
+                if lv["version"] == "git":
+                    lv["version"] = str(sys.maxsize)
+                if version.parse(nv["version"]) <= version.parse(lv["version"]):
+                    res.add(os.path.join(_new_layer_name, nv["path"]))
+                    break
+    return res
+
+
+def main():
+    _args = create_parser()
+    _dict = {}
+    for _layer in _args.layerdirs + [_args.newlayer]:
+        _dict = {**_dict, **walk_layer(_args, _layer)}
+
+    _warnpaths = set()
+    _bbmasks = set()
+    if "files" in _args.checks:
+        _warnpaths.update(eval_files(_args, _dict))
+    if "bbappend" in _args.checks:
+        _bbmasks.update(eval_append(_args, _dict))
+    if "version" in _args.checks:
+        _bbmasks.update(eval_recipe(_args, _dict))
+
+    if _warnpaths:
+        print("Following paths might overwrite settings from the specified layers.")
+        print(
+            "Consider adding this layer after all the other specified to mitigate chances")
+        print("of unwanted overrides.\n")
+        print("\n".join(sorted(_warnpaths)))
+        print("")
+    if _bbmasks:
+        print("Consider adding this to your build config\n")
+        print('BBMASK += "\\')
+        print("\n".join(["           {} \\".format(re.escape(x))
+                         for x in sorted(_bbmasks)]))
+        print('          "')
+        print("")
+
+
+if __name__ == '__main__':
+    main()

@@ -27,6 +27,7 @@ A collection of build utils to be used in with YOCTO
 
 ## Available scripts
 
-| script | summary                            | documentation                  |
-| ------ | ---------------------------------- | ------------------------------ |
-| unused | identify unused recipes in a layer | [docu](docs/scripts-unused.md) |
+| script        | summary                                                             | documentation                         |
+| ------------- | ------------------------------------------------------------------- | ------------------------------------- |
+| newlayercheck | check a layer for possible corruptions/changes of an existing stack | [docu](docs/scripts-newlayercheck.md) |
+| unused        | identify unused recipes in a layer                                  | [docu](docs/scripts-unused.md)        |
