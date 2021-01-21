@@ -1,0 +1,108 @@
+#!/usr/bin/env python3
+
+# SPDX-License-Identifier: BSD-2-Clause
+# Copyright (c) 2021, Konrad Weihmann
+
+# This scripts converts graphs like task-depends.dot
+# into filterable tree printed to console
+
+# Possible TODO:
+# - add a pkgdata mode to create a package tree
+
+import argparse
+import os
+import re
+import sys
+from collections import defaultdict
+
+try:
+    from anytree import RenderTree
+    from anytree.importer import DictImporter
+except ImportError:
+    sys.stderr.write(
+        "Can't import 'anytree'. Please run 'pip install anytree' to enable this script here\n")
+    sys.exit(-1)
+
+
+sys.setrecursionlimit(20000)
+
+
+def create_parser():
+    parser = argparse.ArgumentParser(description='New layer check')
+    parser.add_argument(
+        "--mode", choices=["taskdepends"], default="taskdepends", help="mode to operate in")
+    parser.add_argument("--nosimplify", default=False,
+                        action="store_true", help="Do not merge overlaping paths")
+    parser.add_argument("root", help="Name of the root node")
+    parser.add_argument("endnode", help="Stop tree at")
+    parser.add_argument(
+        "input", help="Path to input files [depends on mode selected]")
+    return parser.parse_args()
+
+
+_hits = []
+
+
+def _reverse_search(_dict, start, name, _path):
+    global _hits
+    if start != name:
+        for k, v in _dict.items():
+            if name in v and k not in _path:
+                _reverse_search(_dict, start, k, _path + [k])
+    else:
+        if _path and _path[-1] != name:
+            _path.append(name)
+        _hits.append(_path[::-1])
+
+
+def _simplify(args):
+    global _hits
+    # TODO invent a good way to merge
+    # overlaping paths -> SequenceMatcher isn't one :-(
+    return _hits
+
+
+def _captain_planet(args, _dict):
+    # turn this into a tree!!!
+    _reverse_search(_dict, args.root, args.endnode, [args.endnode])
+    _paths = _simplify(args)
+
+    _tmpdict = {
+        "name": args.root,
+        "children": [
+
+        ]
+    }
+    for _p in _paths:
+        _t = None
+        for index, value in enumerate(_p[::-1][:-1]):
+            if _t:
+                _t = {"name": value, "children": [_t]}
+            else:
+                _t = {"name": value}
+        _tmpdict["children"].append(_t)
+    return _tmpdict
+
+
+def _parse_input(args):
+    _dict = defaultdict(set)
+    if args.mode == "taskdepends":
+        _pattern = r"^\"(?P<target>.*?)\..*\"\s+->\s+\"(?P<depends>.*?)\..*\""
+        with open(args.input) as i:
+            for m in re.finditer(_pattern, i.read(), re.MULTILINE):
+                if m.group("target") == m.group("depends"):
+                    continue
+                _dict[m.group("target")].add(m.group("depends"))
+    return _dict
+
+
+def main():
+    _args = create_parser()
+    _rawdict = _parse_input(_args)
+    _tree = DictImporter().import_(_captain_planet(_args, _rawdict))
+    for pre, _, node in RenderTree(_tree):
+        print("%s%s" % (pre, node.name))
+
+
+if __name__ == '__main__':
+    main()
