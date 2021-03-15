@@ -33,7 +33,7 @@ def create_parser():
         "--mode", choices=["taskdepends", "pkgdepend"], default="taskdepends", help="mode to operate in")
     parser.add_argument("--nosimplify", default=False,
                         action="store_true", help="Do not merge overlaping paths")
-    parser.add_argument("root", help="Name of the root node")
+    parser.add_argument("root", help="Name of the root node or path to an image manifest")
     parser.add_argument("endnode", help="Stop tree at")
     parser.add_argument(
         "input", help="Path to input files [depends on mode selected]")
@@ -61,28 +61,41 @@ def _simplify(args):
     # overlaping paths -> SequenceMatcher isn't one :-(
     return _hits
 
+def explode_root(args):
+    if os.path.isfile(args.root):
+        # treat it like an image manifest
+        # base-files qemux86_64 3.0.14-r89
+        with open(args.root) as i:
+            return [x.group("pn") for x in re.finditer(r'^(?P<pn>.*?)\s+.*', i.read(), re.MULTILINE)]
+    return [args.root]
+
 
 def _captain_planet(args, _dict):
-    # turn this into a tree!!!
-    _reverse_search(_dict, args.root, args.endnode, [args.endnode])
-    _paths = _simplify(args)
+    global _hits
+    # turn this into a tree!!! (to be exact a list of trees)
+    result = []
 
-    _tmpdict = {
-        "name": args.root,
-        "children": [
+    for rootnode in explode_root(args):
+        _hits = []
+        _reverse_search(_dict, rootnode, args.endnode, [args.endnode])
+        _paths = _simplify(args)
 
-        ]
-    }
-    for _p in _paths:
-        _t = None
-        for index, value in enumerate(_p[::-1][:-1]):
-            if _t:
-                _t = {"name": value, "children": [_t]}
-            else:
-                _t = {"name": value}
-        _tmpdict["children"].append(_t)
-    return _tmpdict
+        _tmpdict = {
+            "name": rootnode,
+            "children": [
 
+            ]
+        }
+        for _p in _paths:
+            _t = None
+            for index, value in enumerate(_p[::-1][:-1]):
+                if _t:
+                    _t = {"name": value, "children": [_t]}
+                else:
+                    _t = {"name": value}
+            _tmpdict["children"].append(_t)
+        result.append(_tmpdict)
+    return result
 
 def read_pkg_data(_file):
     # RDEPENDS_libxcrypt: glibc (>= 2.33)
@@ -117,9 +130,15 @@ def _parse_input(args):
 def main():
     _args = create_parser()
     _rawdict = _parse_input(_args)
-    _tree = DictImporter().import_(_captain_planet(_args, _rawdict))
-    for pre, _, node in RenderTree(_tree):
-        print("%s%s" % (pre, node.name))
+    for tree in _captain_planet(_args, _rawdict):
+        try:
+            _tree = DictImporter().import_(tree)
+            if not _tree.children:
+                continue
+            for pre, _, node in RenderTree(_tree):
+                print("%s%s" % (pre, node.name))
+        except AssertionError:
+            pass
 
 
 if __name__ == '__main__':
