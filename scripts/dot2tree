@@ -28,9 +28,9 @@ sys.setrecursionlimit(20000)
 
 
 def create_parser():
-    parser = argparse.ArgumentParser(description='New layer check')
+    parser = argparse.ArgumentParser(description='dot2tree')
     parser.add_argument(
-        "--mode", choices=["taskdepends"], default="taskdepends", help="mode to operate in")
+        "--mode", choices=["taskdepends", "pkgdepend"], default="taskdepends", help="mode to operate in")
     parser.add_argument("--nosimplify", default=False,
                         action="store_true", help="Do not merge overlaping paths")
     parser.add_argument("root", help="Name of the root node")
@@ -84,6 +84,16 @@ def _captain_planet(args, _dict):
     return _tmpdict
 
 
+def read_pkg_data(_file):
+    # RDEPENDS_libxcrypt: glibc (>= 2.33)
+    #          ^PN      : ^depend ^ignore
+    _dict = defaultdict(set)
+    with open(_file) as i:
+        for m in re.finditer(r'^RDEPENDS_(?P<pn>.*):\s+(?P<deps>.*)', i.read(), re.MULTILINE):
+            _dict[m.group("pn")] = set(x for x in m.group("deps").split(" ") if x and not x.startswith("("))
+    return _dict
+
+
 def _parse_input(args):
     _dict = defaultdict(set)
     if args.mode == "taskdepends":
@@ -93,6 +103,14 @@ def _parse_input(args):
                 if m.group("target") == m.group("depends"):
                     continue
                 _dict[m.group("target")].add(m.group("depends"))
+    elif args.mode == "pkgdepend":
+        if not os.path.isdir(args.input) or not args.input.endswith("runtime-reverse"):
+            print("you need to provide the '${PKGDATA_DIR}/runtime-reverse' path as input")
+            sys.exit(1)
+        # check that input is a dir ending on runtime-reverse
+        for root, dirs, files in os.walk(args.input):
+            for f in files:
+                _dict.update(read_pkg_data(os.path.join(root, f)))
     return _dict
 
 
