@@ -6,13 +6,11 @@
 # This scripts converts graphs like task-depends.dot
 # into filterable tree printed to console
 
-# Possible TODO:
-# - add a pkgdata mode to create a package tree
-
 import argparse
 import os
 import re
 import sys
+import textwrap
 from collections import defaultdict
 
 try:
@@ -26,14 +24,66 @@ except ImportError:
 
 sys.setrecursionlimit(20000)
 
-
 def create_parser():
-    parser = argparse.ArgumentParser(description='dot2tree')
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.RawTextHelpFormatter,
+        prog='dot2tree',
+        description='print nice trees out of bitbake information',
+        epilog=textwrap.dedent('''
+        in mode taskdepends you could run
+
+        dot2tree --mode=taskdepends core-image-minimal kern-tools-native task-depends.dot
+
+        which results in
+
+            core-image-minimal
+            ├── busybox
+                └── kern-tools-native
+        
+        in mode pkgdepend you could run
+
+        dot2tree --mode=pkgdepend python3-core ncurses-libtinfo /path/to/your/workspace/tmp/pkgdata/<arch>/runtime-reverse
+
+        which results in
+
+            python3-core
+            └── readline
+                └── ncurses-libtinfo
+
+        or you can specify an image manifest
+
+        ./dot2tree --mode=pkgdepend /path/to/your/workspace/tmp/deploy/images/<arch>/<image name>.manifest dbus-tools /path/to/your/workspace/tmp/pkgdata/<arch>/runtime-reverse
+
+        which results in
+
+            packagegroup-core-boot
+            └── systemd
+                └── dbus
+                    └── dbus-tools
+            systemd
+            └── dbus
+                └── dbus-tools
+            systemd-compat-units
+            └── systemd
+                └── dbus
+                    └── dbus-tools
+            systemd-extra-utils
+            └── systemd
+                └── dbus
+                    └── dbus-tools
+            systemd-vconsole-setup
+            └── systemd
+                └── dbus
+                    └── dbus-tools
+        
+        Please note that time needed to compute the graphs grows with the depth of the depedency tree
+                '''))
     parser.add_argument(
         "--mode", choices=["taskdepends", "pkgdepend"], default="taskdepends", help="mode to operate in")
     parser.add_argument("--nosimplify", default=False,
                         action="store_true", help="Do not merge overlaping paths")
-    parser.add_argument("root", help="Name of the root node or path to an image manifest")
+    parser.add_argument(
+        "root", help="Name of the root node or path to an image manifest")
     parser.add_argument("endnode", help="Stop tree at")
     parser.add_argument(
         "input", help="Path to input files [depends on mode selected]")
@@ -41,7 +91,6 @@ def create_parser():
 
 
 _hits = []
-
 
 def _reverse_search(_dict, start, name, _path):
     global _hits
@@ -60,6 +109,7 @@ def _simplify(args):
     # TODO invent a good way to merge
     # overlaping paths -> SequenceMatcher isn't one :-(
     return _hits
+
 
 def explode_root(args):
     if os.path.isfile(args.root):
@@ -97,40 +147,49 @@ def _captain_planet(args, _dict):
         result.append(_tmpdict)
     return result
 
+
 def read_pkg_data(_file):
     # RDEPENDS_libxcrypt: glibc (>= 2.33)
     #          ^PN      : ^depend ^ignore
     _dict = defaultdict(set)
     with open(_file) as i:
         for m in re.finditer(r'^RDEPENDS_(?P<pn>.*):\s+(?P<deps>.*)', i.read(), re.MULTILINE):
-            _dict[m.group("pn")] = set(x for x in m.group("deps").split(" ") if x and not x.startswith("("))
+            _dict[m.group("pn")] = set(x for x in m.group(
+                "deps").split(" ") if x and not x.startswith("("))
     return _dict
 
 
-def _parse_input(args):
+def _parse_input_taskdepends(args):
     _dict = defaultdict(set)
-    if args.mode == "taskdepends":
-        _pattern = r"^\"(?P<target>.*?)\..*\"\s+->\s+\"(?P<depends>.*?)\..*\""
-        with open(args.input) as i:
-            for m in re.finditer(_pattern, i.read(), re.MULTILINE):
-                if m.group("target") == m.group("depends"):
-                    continue
-                _dict[m.group("target")].add(m.group("depends"))
-    elif args.mode == "pkgdepend":
-        if not os.path.isdir(args.input) or not args.input.endswith("runtime-reverse"):
-            print("you need to provide the '${PKGDATA_DIR}/runtime-reverse' path as input")
-            sys.exit(1)
-        # check that input is a dir ending on runtime-reverse
-        for root, dirs, files in os.walk(args.input):
-            for f in files:
-                _dict.update(read_pkg_data(os.path.join(root, f)))
+    _pattern = r"^\"(?P<target>.*?)\..*\"\s+->\s+\"(?P<depends>.*?)\..*\""
+    with open(args.input) as i:
+        for m in re.finditer(_pattern, i.read(), re.MULTILINE):
+            if m.group("target") == m.group("depends"):
+                continue
+            _dict[m.group("target")].add(m.group("depends"))
+    return _dict
+
+
+def _parse_input_pkgdepends(args):
+    _dict = defaultdict(set)
+    if not os.path.isdir(args.input) or not args.input.endswith("runtime-reverse"):
+        print(
+            "you need to provide the '${PKGDATA_DIR}/runtime-reverse' path as input")
+        sys.exit(1)
+    # check that input is a dir ending on runtime-reverse
+    for root, dirs, files in os.walk(args.input):
+        for f in files:
+            _dict.update(read_pkg_data(os.path.join(root, f)))
     return _dict
 
 
 def main():
     _args = create_parser()
-    _rawdict = _parse_input(_args)
-    for tree in _captain_planet(_args, _rawdict):
+    if _args.mode == "taskdepends":
+        _raw = _parse_input_taskdepends(_args)
+    elif _args.mode == "pkgdepend":
+        _raw = _parse_input_pkgdepends(_args)
+    for tree in _captain_planet(_args, _raw):
         try:
             _tree = DictImporter().import_(tree)
             if not _tree.children:
