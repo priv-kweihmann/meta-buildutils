@@ -21,12 +21,15 @@ except ImportError:
         "Can't import 'anytree'. Please run 'pip install anytree' to enable this script here\n")
     sys.exit(-1)
 
+class CustomArgparserHelpFormatter(argparse.RawTextHelpFormatter, argparse.ArgumentDefaultsHelpFormatter):
+    pass
+
 
 sys.setrecursionlimit(20000)
 
 def create_parser():
     parser = argparse.ArgumentParser(
-        formatter_class=argparse.RawTextHelpFormatter,
+        formatter_class=CustomArgparserHelpFormatter,
         prog='dot2tree',
         description='print nice trees out of bitbake information',
         epilog=textwrap.dedent('''
