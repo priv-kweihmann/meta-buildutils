@@ -1,17 +1,29 @@
-name: "[warrior]-standard"
+name: "push"
 
-on:
-  push:
-    branches: master
+on: push
 
 jobs:
   qemux86:
     name: "qemux86 with standard options"
     env:
       MACHINE: qemux86
-      BRANCH: warrior
 
     runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        module: [
+                  auto-inherit, 
+                  hashdog, 
+                  kconfig-sanity, 
+                  layer-safety, 
+                  python3-package-ident,
+                  python-speedups,
+                  rm_orphans,
+                  rootfs-chart,
+                  swinventory
+                  ]
+        branch: [thud, warrior, zeus, dunfell, gatesgarth, hardknott, master]
 
     steps:
       - uses: actions/checkout@v1
@@ -22,7 +34,7 @@ jobs:
       - name: Install Dependencies
         run: sudo apt-get -yq --no-install-suggests --no-install-recommends install build-essential chrpath diffstat gawk gcc-multilib git-core libsdl1.2-dev python3 socat texinfo unzip wget xterm
       - name: Check out poky
-        run: git clone git://git.yoctoproject.org/poky.git/ -b $BRANCH poky
+        run: git clone git://git.yoctoproject.org/poky.git/ -b ${{ matrix.branch }} poky
       - name: Setup poky
         run: source poky/oe-init-build-env
       - name: add meta-buildutils
@@ -32,7 +44,7 @@ jobs:
       - name: prepare local.conf
         run: |
           source poky/oe-init-build-env
-          echo 'INHERIT +="rm_work"' >> conf/local.conf
+          echo 'INHERIT += "${{ matrix.testset }}"' >> conf/local.conf
       - name: Bitbake parse
         run: |
           source poky/oe-init-build-env
