@@ -64,10 +64,11 @@ def walk_dir(args):
                 for x in [expand_term(_stash, _filepath, y) for y in item.get_items()]:
                     _alias[x] = _keys[0]
             # extract packages first
-            _packages = set(get_base_varset()["PACKAGES"])
+            _packages = set((get_base_varset()["PACKAGES"]).split(" "))
             for pkg in _stash.GetItemsFor(attribute=Variable.ATTR_VAR, attributeValue="PACKAGES"):
                 _packages.update([expand_term(_stash, _filepath, y)
-                                  for y in item.get_items()])
+                                  for y in pkg.get_items()])
+                _packages.update(pkg.get_items())
 
             # packageconfig
             _pcflags = set((x.Flag, x.VarValueStripped) for x in _stash.GetItemsFor(
