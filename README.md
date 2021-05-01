@@ -24,6 +24,6 @@ A collection of build utils to be used in with YOCTO
 
 | script        | summary                                                             | documentation                         |
 | ------------- | ------------------------------------------------------------------- | ------------------------------------- |
-| dot2tree      | create filterable trees from e.g. task-depends.dot                  | [docu](docs/scripts-dot2tree)         |
+| dot2tree      | create filterable trees from recipe info                            | [docu](docs/scripts-dot2tree.md)      |
 | newlayercheck | check a layer for possible corruptions/changes of an existing stack | [docu](docs/scripts-newlayercheck.md) |
 | unused        | identify unused recipes in a layer                                  | [docu](docs/scripts-unused.md)        |
