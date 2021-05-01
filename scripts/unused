@@ -98,6 +98,12 @@ def walk_dir(args):
             for item in _stash.GetItemsFor(attribute=Variable.ATTR_VAR, attributeValue="EXTRA_IMAGEDEPENDS"):
                 _rdepends.update([expand_term(_stash, _filepath, y)
                                   for y in item.get_items()])
+            for item in _stash.GetItemsFor(attribute=Variable.ATTR_VAR, attributeValue="EXTRA_DEPENDS"):
+                _rdepends.update([expand_term(_stash, _filepath, y)
+                                  for y in item.get_items()])
+            for item in _stash.GetItemsFor(attribute=Variable.ATTR_VAR, attributeValue="EXTRA_RDEPENDS"):
+                _rdepends.update([expand_term(_stash, _filepath, y)
+                                  for y in item.get_items()])
 
             # Get build time dependencies
             for item in _stash.GetItemsFor(attribute=Variable.ATTR_VAR, attributeValue="DEPENDS"):
