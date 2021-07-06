@@ -12,7 +12,7 @@ import sys
 try:
     from oelint_parser.cls_item import Variable
     from oelint_parser.cls_stash import Stash
-    from oelint_parser.const_vars import get_base_varset
+    from oelint_parser.constants import CONSTANTS
     from oelint_parser.helper_files import expand_term
     from oelint_parser.helper_files import guess_recipe_name
 except ImportError:
@@ -64,7 +64,7 @@ def walk_dir(args):
                 for x in [expand_term(_stash, _filepath, y) for y in item.get_items()]:
                     _alias[x] = _keys[0]
             # extract packages first
-            _packages = set((get_base_varset()["PACKAGES"]).split(" "))
+            _packages = set((CONSTANTS.SetsBase["PACKAGES"]).split(" "))
             for pkg in _stash.GetItemsFor(attribute=Variable.ATTR_VAR, attributeValue="PACKAGES"):
                 _packages.update([expand_term(_stash, _filepath, y)
                                   for y in pkg.get_items()])
