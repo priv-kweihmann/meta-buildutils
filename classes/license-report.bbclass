@@ -19,9 +19,11 @@
 addhandler license_report_handler
 license_report_handler[eventmask] = "bb.event.SanityCheck bb.event.RecipeParsed"
 python license_report_handler() {
-    if not (d.getVar("LICENSE_CREATE_PACKAGE") or ""):
+    if (d.getVar("LICENSE_CREATE_PACKAGE") or "") != "1":
         bb.fatal("'LICENSE_CREATE_PACKAGE' needs to be enabled. Can't proceed")
     for item in (d.getVar("LICENSE_REPORT_FORMATS") or "").split(" "):
+        if not item.strip():
+            continue
         for tool in (d.getVarFlag("LICENSE_REPORT_FORMATS", item) or "").split(" "):
             if not tool:
                 continue
@@ -58,7 +60,7 @@ python do_license_report_export() {
     for item in (d.getVar("LICENSE_REPORT_FORMATS") or "").split(" "):
         _cmd = d.getVarFlag("LICENSE_REPORT_EXPORT", item)
         try:
-            subprocess.check_call(_cmd, shell=True)
+            subprocess.check_call(_cmd or "exit 1", shell=True)
         except subprocess.CalledProcessError as e:
             bb.warn("License-report export to {format} failed with {e}".format(format=item, e=e))
 }
@@ -84,7 +86,7 @@ def license_report_walk_tree(d, recipeinfo, base):
                     bb.warn("Can't decode {} - ignoring this file".format(_filepath))
     return _map
 
-def license_report_intermediate_report(_map):
+def license_report_intermediate_report(d, _map):
     import datetime
 
     _res = "# License report\n\nCreated at {date}\n".format(date=datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
@@ -100,8 +102,42 @@ def license_report_intermediate_report(_map):
             _res += "```\n\n"
     return _res
 
+def license_report_get_from_rprovides(dc, pkg):
+    import oe.packagedata
+
+    pkg_info = os.path.join(dc.getVar('PKGDATA_DIR'), 'runtime-rprovides', pkg, pkg)
+    if os.path.exists(pkg_info):
+        _info = oe.packagedata.read_pkgdatafile(pkg_info)
+        bb.debug(2, "rprovides: {} -> {}".format(pkg, _info.get("PKG_" + pkg, "")))
+        return _info.get("PKG_" + pkg, "")
+    return ""
+
+def license_report_get_from_reverse(dc, pkg, with_rcomm=False):
+    import oe.packagedata
+
+    pkg_info = os.path.join(dc.getVar('PKGDATA_DIR'), 'runtime-reverse', pkg)
+    if os.path.exists(pkg_info):
+        _info = oe.packagedata.read_pkgdatafile(pkg_info)
+        if with_rcomm:
+            for k, _ in _info.items():
+                if k.startswith("RRECOMMENDS_"):
+                    _rcomm = [x for x in _info.get(k, "").split(" ") if x.endswith("-lic")]
+                    if _rcomm:
+                        return license_report_get_from_rprovides(dc, _rcomm[0])
+        return _info.get("PN", "") + "-lic"
+    return ""
+
+def license_report_pkg_exists(dc, pkg):
+    import glob
+    return any(glob.glob(os.path.join(dc.getVar("DEPLOY_DIR"), dc.getVar("IMAGE_PKGTYPE"), "*", pkg + "*")))
+
 python do_license_report() {
+    # exit if reporting is disabled
+    if not d.getVar("LICENSE_REPORT_FORMATS"):
+        return
+
     import os
+    import json
     import shutil
 
     from oe.rootfs import image_list_installed_packages
@@ -111,63 +147,108 @@ python do_license_report() {
     os.makedirs(_temppath, exist_ok=True)
     _map = {}
 
+    dc = d.createCopy()
+    dc.setVar("IMAGE_ROOTFS", _temppath)
+
     img_type = d.getVar('IMAGE_PKGTYPE')
     if img_type == "rpm":
         from oe.package_manager.rpm import RpmPM
         from oe.package_manager.rpm.manifest import RpmManifest
 
-        manifest = RpmManifest(d, None)
-        pm = RpmPM(d, _temppath, d.getVar('TARGET_VENDOR'))
+        manifest = RpmManifest(dc, None)
+        pm = RpmPM(dc, dc.getVar('IMAGE_ROOTFS'), dc.getVar('TARGET_VENDOR'),
+                   rpm_repo_workdir="oe-rootfs-repo-lr")
+        pm.create_configs()
+        pm.write_index()
+        pm.update()
     elif img_type == "ipk":
         from oe.package_manager.ipk import OpkgPM
         from oe.package_manager.ipk.manifest import OpkgManifest
 
-        manifest = OpkgManifest(d, None)
-        pm = OpkgPM(d, _temppath, d.getVar("IPKGCONF_TARGET"), d.getVar("ALL_MULTILIB_PACKAGE_ARCHS"))
+        manifest = OpkgManifest(dc, None)
+        pm = OpkgPM(dc, dc.getVar('IMAGE_ROOTFS'), dc.getVar("IPKGCONF_TARGET"), dc.getVar("ALL_MULTILIB_PACKAGE_ARCHS"))
         pm.write_index()
         pm.update()
     elif img_type == "deb":
         from oe.package_manager.deb import DpkgPM
         from oe.package_manager.deb.manifest import DpkgManifest
 
-        manifest = DpkgManifest(d, None)
-        pm = DpkgPM(d, _temppath, d.getVar('PACKAGE_ARCHS'), d.getVar('DPKG_ARCH'))
-        pm.insert_feeds_uris(d.getVar('PACKAGE_FEED_URIS') or "",
-                             d.getVar('PACKAGE_FEED_BASE_PATHS') or "",
-                             d.getVar('PACKAGE_FEED_ARCHS'))
-        bb.utils.mkdirhier(d.expand("${IMAGE_ROOTFS}/var/lib/dpkg/alternatives"))
+        manifest = DpkgManifest(dc, None)
+        pm = DpkgPM(dc, dc.getVar('IMAGE_ROOTFS'), dc.getVar('PACKAGE_ARCHS'), dc.getVar('DPKG_ARCH'))
+        pm.insert_feeds_uris(dc.getVar('PACKAGE_FEED_URIS') or "",
+                             dc.getVar('PACKAGE_FEED_BASE_PATHS') or "",
+                             dc.getVar('PACKAGE_FEED_ARCHS'))
+        bb.utils.mkdirhier(dc.expand("${IMAGE_ROOTFS}/var/lib/dpkg/alternatives"))
         pm.write_index()
         pm.update()
-        
-    for pkg in image_list_installed_packages(d):
-        _licpkg = "{}-lic".format(pkg)
-        if not has_subpkgdata(_licpkg, d):
+
+    if img_type == "rpm":
+        bb.utils.mkdirhier(dc.expand("${IMAGE_ROOTFS}/etc/dnf/vars/"))
+        bb.utils.mkdirhier(dc.expand("${IMAGE_ROOTFS}/var/lib/rpm/"))
+        open(dc.expand("${IMAGE_ROOTFS}/etc/dnf/dnf.conf"), 'w').write("")
+    if img_type == "deb":
+        bb.utils.mkdirhier(dc.expand("${IMAGE_ROOTFS}/etc/apt/apt.conf.d/"))
+        bb.utils.mkdirhier(dc.expand("${IMAGE_ROOTFS}/etc/apt/sources.list.d/"))
+        bb.utils.mkdirhier(dc.expand("${IMAGE_ROOTFS}/var/lib/dpkg/"))
+        bb.utils.mkdirhier(dc.expand("${IMAGE_ROOTFS}/var/lib/dpkg/alternatives"))
+
+    with open(d.getVar("LICENSE_REPORT_PKGLIST")) as i:
+        pkgs = json.load(i)
+
+    bb.note("Found packages: {}".format(" ".join(pkgs)))
+
+    for pkg in pkgs:
+        bb.note("Try getting license for {}".format(pkg))
+        _licpkg = None
+        for needle in [license_report_get_from_reverse(dc, pkg),
+                       license_report_get_from_reverse(dc, pkg, with_rcomm=True)]:
+            if license_report_pkg_exists(dc, needle): ##has_subpkgdata(needle, dc) and 
+                bb.note("{} uses {} as license package provider".format(pkg, needle))
+                _licpkg = needle
+                break
+            _licpkg = None
+
+        if not _licpkg:
+            bb.note("No package data found for {}".format(pkg))
             continue
-        # translate packagename to workaround debian renaming
-        _recipeinfo = read_subpkgdata_dict(_licpkg, d)
-        _licpkg = _recipeinfo.get("PKG", _licpkg)
         if img_type == "rpm":
-            bb.utils.mkdirhier(os.path.join(_temppath, "etc/dnf/vars/"))
-            bb.utils.mkdirhier(os.path.join(_temppath, "var/lib/rpm/"))
-            open(oe.path.join(_temppath, "etc/dnf/dnf.conf"), 'w').write("")
+            bb.utils.mkdirhier(dc.expand("${IMAGE_ROOTFS}/etc/dnf/vars/"))
+            bb.utils.mkdirhier(dc.expand("${IMAGE_ROOTFS}/var/lib/rpm/"))
+            open(dc.expand("${IMAGE_ROOTFS}/etc/dnf/dnf.conf"), 'w').write("")
         if img_type == "deb":
-            bb.utils.mkdirhier(os.path.join(_temppath, "etc/apt/apt.conf.d/"))
-            bb.utils.mkdirhier(os.path.join(_temppath, "etc/apt/sources.list.d/"))
-            bb.utils.mkdirhier(os.path.join(_temppath, "var/lib/dpkg/"))
-            bb.utils.mkdirhier(os.path.join(_temppath, "var/lib/dpkg/alternatives"))
+            bb.utils.mkdirhier(dc.expand("${IMAGE_ROOTFS}/etc/apt/apt.conf.d/"))
+            bb.utils.mkdirhier(dc.expand("${IMAGE_ROOTFS}/etc/apt/sources.list.d/"))
+            bb.utils.mkdirhier(dc.expand("${IMAGE_ROOTFS}/var/lib/dpkg/"))
+            bb.utils.mkdirhier(dc.expand("${IMAGE_ROOTFS}/var/lib/dpkg/alternatives"))
         try:
             _tmpdir = pm.extract(_licpkg)
-            _x = license_report_walk_tree(d, read_subpkgdata_dict(_licpkg, d), _tmpdir)
+            _x = license_report_walk_tree(dc, read_subpkgdata_dict(_licpkg, dc), _tmpdir)
             if _x:
                 _map[pkg] = _x
             shutil.rmtree(_tmpdir, ignore_errors=True)
         except Exception as e:
-            bb.warn("General exception:" + str(e))
+            bb.warn("General exception [{}/{}]:{}".format(pkg, _licpkg, e))
+
+    bb.verbnote("Found {} license packages to report".format(len(_map.keys())))
     
     with open(d.getVar("LICENSE_REPORT_INTERMEDIATE"), "w") as o:
-        o.write(license_report_intermediate_report(_map))
+        o.write(license_report_intermediate_report(dc, _map))
 
     bb.build.exec_func("do_license_report_export", d)
 }
-do_rootfs[postfuncs] += "do_license_report"
+addtask do_license_report after do_image before do_image_complete
 do_license_report[doc] = "create a license report from all used packages"
+
+ROOTFS_POSTPROCESS_COMMAND =+ " do_sca_image_pkg_list; "
+
+LICENSE_REPORT_PKGLIST = "${T}/lr-pkgs.json"
+
+python do_sca_image_pkg_list() {
+    # Get the used packages in rootfs stage
+    # in later stages the method does not return
+    # the needed data
+    import json
+    from oe.rootfs import image_list_installed_packages
+    with open(d.getVar("LICENSE_REPORT_PKGLIST"), "w") as o:
+        json.dump(list(image_list_installed_packages(d).keys()), o)
+}
