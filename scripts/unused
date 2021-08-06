@@ -89,7 +89,13 @@ def walk_dir(args):
                 for item in _stash.GetItemsFor(attribute=Variable.ATTR_VAR, attributeValue="RDEPENDS_{}".format(pkg)):
                     _rdepends.update([expand_term(_stash, _filepath, y)
                                       for y in item.get_items()])
+                for item in _stash.GetItemsFor(attribute=Variable.ATTR_VAR, attributeValue="RDEPENDS:{}".format(pkg)):
+                    _rdepends.update([expand_term(_stash, _filepath, y)
+                                      for y in item.get_items()])
             for item in _stash.GetItemsFor(attribute=Variable.ATTR_VAR, attributeValue="RDEPENDS_${PN}"):
+                _rdepends.update([expand_term(_stash, _filepath, y)
+                                  for y in item.get_items()])
+            for item in _stash.GetItemsFor(attribute=Variable.ATTR_VAR, attributeValue="RDEPENDS:${PN}"):
                 _rdepends.update([expand_term(_stash, _filepath, y)
                                   for y in item.get_items()])
             for item in _stash.GetItemsFor(attribute=Variable.ATTR_VAR, attributeValue="IMAGE_INSTALL"):
