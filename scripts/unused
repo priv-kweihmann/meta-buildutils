@@ -53,82 +53,88 @@ def walk_dir(args):
             _rdepends = set()
 
             _stash = Stash(quiet=True)
-            _stash.AddFile(_filepath)
-            # Get identifiers of the recipe
-            _keys = [guess_recipe_name(_filepath)]
-            # Check for aliases
-            for item in _stash.GetItemsFor(attribute=Variable.ATTR_VAR, attributeValue="PROVIDES"):
-                for x in [expand_term(_stash, _filepath, y) for y in item.get_items()]:
-                    _alias[x] = _keys[0]
-            for item in _stash.GetItemsFor(attribute=Variable.ATTR_VAR, attributeValue="RPROVIDES"):
-                for x in [expand_term(_stash, _filepath, y) for y in item.get_items()]:
-                    _alias[x] = _keys[0]
-            # extract packages first
-            _packages = set((CONSTANTS.SetsBase["PACKAGES"]).split(" "))
-            for pkg in _stash.GetItemsFor(attribute=Variable.ATTR_VAR, attributeValue="PACKAGES"):
-                _packages.update([expand_term(_stash, _filepath, y)
-                                  for y in pkg.get_items()])
-                _packages.update(pkg.get_items())
+            try:
+                _stash.AddFile(_filepath)
+                # Get identifiers of the recipe
+                _keys = [guess_recipe_name(_filepath)]
+                # Check for aliases
+                for item in _stash.GetItemsFor(attribute=Variable.ATTR_VAR, attributeValue="PROVIDES"):
+                    for x in [expand_term(_stash, _filepath, y) for y in item.get_items()]:
+                        _alias[x] = _keys[0]
+                for item in _stash.GetItemsFor(attribute=Variable.ATTR_VAR, attributeValue="RPROVIDES"):
+                    for x in [expand_term(_stash, _filepath, y) for y in item.get_items()]:
+                        _alias[x] = _keys[0]
+                # extract packages first
+                _packages = set((CONSTANTS.SetsBase["PACKAGES"]).split(" "))
+                for pkg in _stash.GetItemsFor(attribute=Variable.ATTR_VAR, attributeValue="PACKAGES"):
+                    _packages.update([expand_term(_stash, _filepath, y)
+                                    for y in pkg.get_items()])
+                    _packages.update(pkg.get_items())
 
-            # packageconfig
-            _pcflags = set((x.Flag, x.VarValueStripped) for x in _stash.GetItemsFor(
-                attribute=Variable.ATTR_VAR, attributeValue="PACKAGECONFIG"))
-            _pc = set()
-            for pkg in _stash.GetItemsFor(attribute=Variable.ATTR_VAR, attributeValue="PACKAGECONFIG"):
-                _pc.update(pkg.get_items())
-            for pc in _pc:
-                for _fl in _pcflags:
-                    if pc == _fl[0]:
-                        _deps = _fl[1].split(",")
-                        if len(_deps) < 3:
-                            continue
-                        _depends.add(_deps[2])
+                # packageconfig
+                _pcflags = set((x.Flag, x.VarValueStripped) for x in _stash.GetItemsFor(
+                    attribute=Variable.ATTR_VAR, attributeValue="PACKAGECONFIG"))
+                _pc = set()
+                for pkg in _stash.GetItemsFor(attribute=Variable.ATTR_VAR, attributeValue="PACKAGECONFIG"):
+                    _pc.update(pkg.get_items())
+                for pc in _pc:
+                    for _fl in _pcflags:
+                        if pc == _fl[0]:
+                            _deps = _fl[1].split(",")
+                            if len(_deps) < 3:
+                                continue
+                            _depends.add(_deps[2])
 
-            # Get runtime dependencies
-            for pkg in _packages:
-                for item in _stash.GetItemsFor(attribute=Variable.ATTR_VAR, attributeValue="RDEPENDS_{}".format(pkg)):
+                # Get runtime dependencies
+                for pkg in _packages:
+                    for item in _stash.GetItemsFor(attribute=Variable.ATTR_VAR, attributeValue="RDEPENDS_{}".format(pkg)):
+                        _rdepends.update([expand_term(_stash, _filepath, y)
+                                        for y in item.get_items()])
+                    for item in _stash.GetItemsFor(attribute=Variable.ATTR_VAR, attributeValue="RDEPENDS:{}".format(pkg)):
+                        _rdepends.update([expand_term(_stash, _filepath, y)
+                                        for y in item.get_items()])
+                for item in _stash.GetItemsFor(attribute=Variable.ATTR_VAR, attributeValue="RDEPENDS_${PN}"):
                     _rdepends.update([expand_term(_stash, _filepath, y)
-                                      for y in item.get_items()])
-                for item in _stash.GetItemsFor(attribute=Variable.ATTR_VAR, attributeValue="RDEPENDS:{}".format(pkg)):
+                                    for y in item.get_items()])
+                for item in _stash.GetItemsFor(attribute=Variable.ATTR_VAR, attributeValue="RDEPENDS:${PN}"):
                     _rdepends.update([expand_term(_stash, _filepath, y)
-                                      for y in item.get_items()])
-            for item in _stash.GetItemsFor(attribute=Variable.ATTR_VAR, attributeValue="RDEPENDS_${PN}"):
-                _rdepends.update([expand_term(_stash, _filepath, y)
-                                  for y in item.get_items()])
-            for item in _stash.GetItemsFor(attribute=Variable.ATTR_VAR, attributeValue="RDEPENDS:${PN}"):
-                _rdepends.update([expand_term(_stash, _filepath, y)
-                                  for y in item.get_items()])
-            for item in _stash.GetItemsFor(attribute=Variable.ATTR_VAR, attributeValue="IMAGE_INSTALL"):
-                _rdepends.update([expand_term(_stash, _filepath, y)
-                                  for y in item.get_items()])
-            for item in _stash.GetItemsFor(attribute=Variable.ATTR_VAR, attributeValue="EXTRA_IMAGEDEPENDS"):
-                _rdepends.update([expand_term(_stash, _filepath, y)
-                                  for y in item.get_items()])
-            for item in _stash.GetItemsFor(attribute=Variable.ATTR_VAR, attributeValue="EXTRA_DEPENDS"):
-                _rdepends.update([expand_term(_stash, _filepath, y)
-                                  for y in item.get_items()])
-            for item in _stash.GetItemsFor(attribute=Variable.ATTR_VAR, attributeValue="EXTRA_RDEPENDS"):
-                _rdepends.update([expand_term(_stash, _filepath, y)
-                                  for y in item.get_items()])
+                                    for y in item.get_items()])
+                for item in _stash.GetItemsFor(attribute=Variable.ATTR_VAR, attributeValue="RDEPENDS"):
+                    _rdepends.update([expand_term(_stash, _filepath, y)
+                                    for y in item.get_items()])
+                for item in _stash.GetItemsFor(attribute=Variable.ATTR_VAR, attributeValue="IMAGE_INSTALL"):
+                    _rdepends.update([expand_term(_stash, _filepath, y)
+                                    for y in item.get_items()])
+                for item in _stash.GetItemsFor(attribute=Variable.ATTR_VAR, attributeValue="EXTRA_IMAGEDEPENDS"):
+                    _rdepends.update([expand_term(_stash, _filepath, y)
+                                    for y in item.get_items()])
+                for item in _stash.GetItemsFor(attribute=Variable.ATTR_VAR, attributeValue="EXTRA_DEPENDS"):
+                    _rdepends.update([expand_term(_stash, _filepath, y)
+                                    for y in item.get_items()])
+                for item in _stash.GetItemsFor(attribute=Variable.ATTR_VAR, attributeValue="EXTRA_RDEPENDS"):
+                    _rdepends.update([expand_term(_stash, _filepath, y)
+                                    for y in item.get_items()])
 
-            # Get build time dependencies
-            for item in _stash.GetItemsFor(attribute=Variable.ATTR_VAR, attributeValue="DEPENDS"):
-                _depends.update([expand_term(_stash, _filepath, y)
-                                 for y in item.get_items()])
+                # Get build time dependencies
+                for item in _stash.GetItemsFor(attribute=Variable.ATTR_VAR, attributeValue="DEPENDS"):
+                    _depends.update([expand_term(_stash, _filepath, y)
+                                    for y in item.get_items()])
 
-            if _keys[0] not in _res:
-                _res[_keys[0]] = {"filename": _filepath, "dependants": set()}
-            # create tree
-            for r in _rdepends:
-                if r not in _res:
-                    _res[r] = {"filename": _filepath, "dependants": set(_keys)}
-                else:
-                    _res[r]["dependants"].update(_keys)
-            for d in _depends:
-                if d not in _res:
-                    _res[d] = {"filename": _filepath, "dependants": set(_keys)}
-                else:
-                    _res[d]["dependants"].update(_keys)
+                if _keys[0] not in _res:
+                    _res[_keys[0]] = {"filename": _filepath, "dependants": set()}
+                # create tree
+                for r in _rdepends:
+                    if r not in _res:
+                        _res[r] = {"filename": _filepath, "dependants": set(_keys)}
+                    else:
+                        _res[r]["dependants"].update(_keys)
+                for d in _depends:
+                    if d not in _res:
+                        _res[d] = {"filename": _filepath, "dependants": set(_keys)}
+                    else:
+                        _res[d]["dependants"].update(_keys)
+            except RecursionError:
+                print("Recursion error on {file}".format(file=_filepath))
     # resolve aliases
     for k, v in _res.items():
         _deps = copy.deepcopy(v["dependants"])
