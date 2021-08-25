@@ -27,8 +27,8 @@ python license_report_handler() {
         for tool in (d.getVarFlag("LICENSE_REPORT_FORMATS", item) or "").split(" "):
             if not tool:
                 continue
-            if tool not in d.getVar("HOSTTOOLS").split(" "):
-                bb.fatal("'LICENSE_REPORT_FORMATS' sets {}, but required tool {} is not installed or not part of 'HOSTTOOLS'".format(item, tool))
+            if tool not in d.expand("${HOSTTOOLS} ${HOSTTOOLS_NONFATAL}").split(" "):
+                bb.fatal("'LICENSE_REPORT_FORMATS' sets {}, but required tool {} is not installed or not part of 'HOSTTOOLS' or 'HOSTTOOLS_NONFATAL'".format(item, tool))
 }
 
 # basename of the exported report file
