@@ -13,17 +13,17 @@ jobs:
     strategy:
       matrix:
         module: [
-                  auto-inherit, 
-                  hashdog, 
-                  kconfig-sanity, 
-                  layer-safety, 
+                  auto-inherit,
+                  hashdog,
+                  kconfig-sanity,
+                  layer-safety,
                   python3-package-ident,
                   python-speedups,
                   rm_orphans,
                   rootfs-chart,
                   swinventory
                   ]
-        branch: [thud, warrior, zeus, dunfell, gatesgarth, hardknott, master]
+        branch: [thud, warrior, zeus]
 
     steps:
       - uses: actions/checkout@v1
@@ -49,4 +49,4 @@ jobs:
         run: |
           source poky/oe-init-build-env
           bitbake -p
-          
+
