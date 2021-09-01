@@ -4,6 +4,8 @@
 
 A collection of build utils to be used in with YOCTO
 
+**NOTE** this is the branch for older release, not supporting the new override syntax
+
 ## Available classes
 
 | class                | summary                                                                                                   | documentation                        |
