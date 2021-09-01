@@ -151,8 +151,8 @@ python do_ident_python_packages() {
         _deps_too_less = ["{}-{}".format(d.getVar("PYTHON_PN"), x) for x in _needed_depends if not x in _depends_stripped]
 
         if any(_deps_too_less):
-            bb.warn("{} uses code from python-packages:{}. Please add them to RDEPENDS_${{PN}}{}".format(_dir, ",".join(sorted(_deps_too_less)), _dir_wo_pn))
+            bb.warn("{} uses code from python-packages:{}. Please add them to RDEPENDS:${{PN}}{}".format(_dir, ",".join(sorted(_deps_too_less)), _dir_wo_pn))
         if any(_deps_too_much):
-            bb.warn("{} don't uses code from python-packages:{}. Please remove them from RDEPENDS_${{PN}}{}".format(_dir, ",".join(sorted(_deps_too_much)), _dir_wo_pn))    
+            bb.warn("{} don't uses code from python-packages:{}. Please remove them from RDEPENDS:${{PN}}{}".format(_dir, ",".join(sorted(_deps_too_much)), _dir_wo_pn))   
 }
 do_package[postfuncs] = "do_ident_python_packages"

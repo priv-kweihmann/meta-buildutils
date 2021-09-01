@@ -120,7 +120,7 @@ def license_report_get_from_reverse(dc, pkg, with_rcomm=False):
         _info = oe.packagedata.read_pkgdatafile(pkg_info)
         if with_rcomm:
             for k, _ in _info.items():
-                if k.startswith("RRECOMMENDS_"):
+                if k.startswith("RRECOMMENDS"):
                     _rcomm = [x for x in _info.get(k, "").split(" ") if x.endswith("-lic")]
                     if _rcomm:
                         return license_report_get_from_rprovides(dc, _rcomm[0])

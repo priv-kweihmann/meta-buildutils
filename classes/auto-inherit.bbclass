@@ -91,7 +91,7 @@ python auto_inherit_handler() {
 ## skipNative = skip native packages
 def auto_inherit_contains_package(d, pn, skipNative=True):
     depends = d.getVar("DEPENDS") or ""
-    rdepends = d.getVar("RDEPENDS_{}".format(d.getVar("PN"))) or ""
+    rdepends = d.getVar("RDEPENDS:{}".format(d.getVar("PN"))) or ""
     pkgs = list(set(depends.split(" ") + rdepends.split(" ")))
     return any(x for x in pkgs if x.startswith(pn) and (skipNative or not x.endswith("-native")))
 

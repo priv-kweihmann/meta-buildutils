@@ -16,6 +16,9 @@ HASHDOG_EXCL ?= "${BB_HASHCONFIG_WHITELIST} ${BB_HASHBASE_WHITELIST} prefix"
 
 def hashdog_get_varset(d, varname, res={}):
     for x in d.expandWithRefs(d.getVar(varname, False), varname).references or set():
+        _flags = d.getVarFlags(varname) or {}
+        if "vardepsexclude" in _flags and x in (_flags["vardepsexclude"] or "").split(" "):
+            continue
         res[x] = d.getVar(x, False)
         hashdog_get_varset(d, x, res=res)
     return res

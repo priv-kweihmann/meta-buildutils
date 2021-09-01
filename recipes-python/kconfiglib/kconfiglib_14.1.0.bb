@@ -14,6 +14,6 @@ PYPI_PACKAGE = "kconfiglib"
 inherit setuptools3
 inherit pypi
 
-FILES_${PN} += "${datadir}/kconfiglib"
+FILES:${PN} += "${datadir}/kconfiglib"
 
 BBCLASSEXTEND = "native nativesdk"

@@ -355,7 +355,7 @@ def swinventory_create_packages(d, pkg, file_function, native=False):
             "files": file_function(d, pkg),
             "license": d.getVar("LICENSE_{}".format(pkg)) or d.getVar("LICENSE"),
             "name": pkg,
-            "rdepends": swinventory_sanitize_list(re.sub(r"\(.*?\)", "", d.getVar("RDEPENDS_{}".format(pkg)) or "")) if not native else [],
+            "rdepends": swinventory_sanitize_list(re.sub(r"\(.*?\)", "", d.getVar("RDEPENDS:{}".format(pkg)) or "")) if not native else [],
             "recipes": swinventory_sanitize_list(swinventory_sanitizes_recipe_paths(d, x) for x in swinventory_get_recipe_file(d)),
            }
 
@@ -368,7 +368,7 @@ def swinventory_create_dummy_package(d, pkg, depends, native=False):
             "files": [],
             "license": d.getVar("LICENSE_{}".format(pkg)) or d.getVar("LICENSE"),
             "name": pkg,
-            "rdepends": swinventory_sanitize_list(re.sub(r"\(.*?\)", "", d.getVar("RDEPENDS_{}".format(pkg)) or "")) if not native else [],
+            "rdepends": swinventory_sanitize_list(re.sub(r"\(.*?\)", "", d.getVar("RDEPENDS:{}".format(pkg)) or "")) if not native else [],
             "recipes": swinventory_sanitize_list(swinventory_sanitizes_recipe_paths(d, x) for x in swinventory_get_recipe_file(d)),
            }
 
@@ -453,7 +453,7 @@ python do_swinventory() {
         for pkg in _pkgs:
             if not pkg or not pkg.strip():
                 continue
-            _rprovides = d.getVar(d.expand("RPROVIDES_{}".format(pkg))) or ""
+            _rprovides = d.getVar(d.expand("RPROVIDES:{}".format(pkg))) or ""
             for rprov in [x for x in _rprovides.split(" ") if x]:
                 with open(os.path.join(d.expand("${SWINVENTORYDIR}"), "{}.json".format(rprov)), "w") as o:
                     json.dump(swinventory_create_dummy_package(d, rprov, [pkg]),
