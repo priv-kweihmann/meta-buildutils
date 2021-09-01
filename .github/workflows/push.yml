@@ -13,17 +13,18 @@ jobs:
     strategy:
       matrix:
         module: [
-                  auto-inherit, 
-                  hashdog, 
-                  kconfig-sanity, 
-                  layer-safety, 
+                  auto-inherit,
+                  hashdog,
+                  kconfig-sanity,
+                  layer-safety,
+                  license-report,
                   python3-package-ident,
                   python-speedups,
                   rm_orphans,
                   rootfs-chart,
                   swinventory
                   ]
-        branch: [thud, warrior, zeus, dunfell, gatesgarth, hardknott, master]
+        branch: [dunfell, gatesgarth, hardknott, master]
 
     steps:
       - uses: actions/checkout@v1
