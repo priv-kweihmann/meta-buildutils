@@ -74,7 +74,7 @@ def walk_dir(args):
                     _packages.update(pkg.get_items())
 
                 # packageconfig
-                _pcflags = set((x.Flag, x.VarValueStripped) for x in _stash.GetItemsFor(
+                _pcflags = set((x.Flag, expand_term(_stash, _filepath, x.VarValueStripped)) for x in _stash.GetItemsFor(
                     attribute=Variable.ATTR_VAR, attributeValue="PACKAGECONFIG"))
                 _pc = set()
                 for pkg in _stash.GetItemsFor(attribute=Variable.ATTR_VAR, attributeValue="PACKAGECONFIG"):
