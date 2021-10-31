@@ -34,6 +34,8 @@ def create_parser():
                         action='append', help="Ignore paths")
     parser.add_argument("--remove", default=False,
                         action='store_true', help="Automatically delete unused files")
+    parser.add_argument("--cycles", default=10, type=int,
+                        help="Repeat for x cycles")
     parser.add_argument("layerdir", help="Path to layer to check")
     x = parser.parse_args()
     x.ignore = get_ignores_file(x)
@@ -148,16 +150,28 @@ def walk_dir(args):
 
 
 def evaluate(args, res):
-    for k, v in res.items():
-        if not v["dependants"] and \
-           not any(v["filename"].startswith(x) for x in args.ignore) and \
-           not any(v["filename"].endswith(x) for x in [".bbclass", "bbappend"]):
-            if args.remove:
-                os.remove(v["filename"])
-                print("{} is likely unused and was removed".format(v["filename"]))
-            else:
-                print("{} is likely not used in this layer".format(v["filename"]))
-
+    for i in range(0, args.cycles, 1):
+        _remove_keys = []
+        for k, v in res.items():
+            if not v["dependants"] and \
+            not any(v["filename"].startswith(x) for x in args.ignore) and \
+            not any(v["filename"].endswith(x) for x in [".bbclass", "bbappend"]):
+                if args.remove:
+                    try:
+                        os.remove(v["filename"])
+                        _remove_keys.append(k)
+                        print("{} is likely unused and was removed".format(v["filename"]))
+                    except FileNotFoundError:
+                        pass
+                else:
+                    print("{} is likely not used in this layer".format(v["filename"]))
+        for k in _remove_keys:
+            del res[k]
+            for _, v in res.items():
+                v["dependants"] = [x for x in v["dependants"] if x != k]
+        if not _remove_keys:
+            # We can stop here
+            break
 
 def main():
     _args = create_parser()
