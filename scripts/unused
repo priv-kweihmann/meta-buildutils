@@ -66,6 +66,12 @@ def walk_dir(args):
                 for item in _stash.GetItemsFor(attribute=Variable.ATTR_VAR, attributeValue="RPROVIDES"):
                     for x in [expand_term(_stash, _filepath, y) for y in item.get_items()]:
                         _alias[x] = _keys[0]
+                for item in _stash.GetItemsFor(attribute=Variable.ATTR_VAR, attributeValue="BBCLASSEXTEND"):
+                    for x in [expand_term(_stash, _filepath, y) for y in item.get_items()]:
+                        if x == "native":
+                            _alias["{}-{}".format(_keys[0], "native")] = _keys[0]
+                        if x == "nativesdk":
+                            _alias["{}-{}".format("nativesdk", _keys[0])] = _keys[0]
                 # extract packages first
                 _packages = set((CONSTANTS.SetsBase["PACKAGES"]).split(" "))
                 for pkg in _stash.GetItemsFor(attribute=Variable.ATTR_VAR, attributeValue="PACKAGES"):
