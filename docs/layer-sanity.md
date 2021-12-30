@@ -27,7 +27,7 @@ Let's say you want the variable **EXTRA_OEMAKE** not being altered by any bbappe
 LAYER_SANITY_PROT_VARS += "EXTRA_OEMAKE.*"
 ```
 
-if now any of the bbappends tries to modify the content of the variable an message will be shown with the change done.
+if now any of the bbappends tries to modify the content of the variable a message will be shown with the change done.
 
 If you also want to 'protect' the file __defconfig__ add the following into your recipe
 

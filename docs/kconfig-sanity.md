@@ -4,7 +4,7 @@
 
 This class does check if __*.cfg__ fragments of KConfig-based systems are applied to resulting configuration.
 It also tries to provide information why a particular __CONFIG__-option can't be applied.
-This is very helpful when upgrading a system.
+This is very helpful when upgrading a system/kernel.
 Also this class offers methods for comparing the actual used configuration against a known configuration in repository.
 
 ## Usage
@@ -26,7 +26,7 @@ Following configuration variables can be used. All variables have reasonable def
 - **KCONFIG_SANITY_CONFIG_PRE** [string] - prefix of __CONFIG__-options
 - **KCONFIG_SANITY_DEFCONFIG** [path] - Path where the __defconfig__-file is placed in recipe workspace
 - **KCONFIG_SANITY_FINALCONF** [path] - Path where the actually applied configuration is stored in recipe workspace
-- **KCONFIG_SANITY_FRAGMENT_EVAL** [string 0:1] - Enables the check on __*.cfg__-fragments, the so called **fragment**-mode
+- **KCONFIG_SANITY_FRAGMENT_EVAL** [string 0:1] - Enables the checks on __*.cfg__-fragments, the so called **fragment**-mode
 - **KCONFIG_SANITY_FRAGMENT_KCONFIG_EXPLAIN** [string 0:1] - Enables detailed explanation why a __CONFIG__-option can't be applied
 - **KCONFIG_SANITY_FRAGMENT_NEW_SET**  [note,warn,error] - Logger function to trigger if a new and set value has been detected in **fragment**-mode
 - **KCONFIG_SANITY_FRAGMENT_NEW_UNSET** [note,warn,error] - Logger function to trigger if a new but unset value has been detected in **fragment**-mode

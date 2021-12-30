@@ -9,7 +9,7 @@ With the help of this class you can dynamically inherit other classes into any r
 You can either insert
 
 ```bitbake
-INHERIT += "auto-inherit.bbclass"
+INHERIT += "auto-inherit"
 ```
 
 into your __distro configuration__ or into __conf/local.conf__ of your build directory
@@ -22,7 +22,7 @@ Best is to place this variable along the inherit.
 E.g.
 
 ```bitbake
-INHERIT += "auto-inherit.bbclass"
+INHERIT += "auto-inherit"
 AUTO_INHERIT_CONF = "BBClass=foo;props[a,b,c]"
 ```
 
@@ -88,4 +88,4 @@ will inherit **bar.bbclass** into each recipe licensed under "GPL" (including al
 AUTO_INHERIT_CONF = "BBClass=bar;props=[auto_inherit_contains_package(d,'python3')]"
 ```
 
-will inherit **bar.bbclass** into each recipe which __DEPENDS__ of **python3**
+will inherit **bar.bbclass** into each recipe which __DEPENDS__ on **python3**

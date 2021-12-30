@@ -2,7 +2,7 @@
 
 ![build status](https://github.com/priv-kweihmann/meta-buildutils/workflows/push/badge.svg)
 
-A collection of build utils to be used in with YOCTO
+A collection of build utils to be used with YOCTO
 
 ## Available classes
 
