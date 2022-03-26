@@ -20,6 +20,7 @@ A collection of build utils to be used with YOCTO
 | rootfs-chart         | generate dot graphs for a specific image (packages, used recipes)                                         | [docu](docs/rootfs-chart.md)         |
 | swinventory          | generate a manifest for each package containing things like used source files, used recipes and much more | [docu](docs/swinventory.md)          |
 | swinventory-image    | generate a manifest based on `swinventory` for packages of an image                                       | [docu](docs/swinventory-image.md)    |
+| upgrade-check        | Automatically check if UPGRADE_STATUS check is working correctly                                          | [docu](docs/upgrade-check.md)        |
 
 ## Available scripts
 
