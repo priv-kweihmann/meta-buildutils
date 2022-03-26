@@ -7,7 +7,7 @@
 python do_upgrade_check() {
     from oe.recipeutils import _get_recipe_upgrade_status
     _, status, _, _, _, _, _ = _get_recipe_upgrade_status(d)
-    if status not in ["MATCH", "UPDATE", "KNOWN_BROKEN"]:
+    if status not in ["MATCH", "UPDATE", "KNOWN_BROKEN", "UNKNOWN"]:
         bb.warn("UPSTREAM_CHECK is broken [status = %s], please check variables UPSTREAM_CHECK_REGEX, UPSTREAM_CHECK_URI and others" % status)
 }
 do_upgrade_check[network] = '1'
