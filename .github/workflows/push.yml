@@ -22,7 +22,9 @@ jobs:
                   python-speedups,
                   rm_orphans,
                   rootfs-chart,
-                  swinventory
+                  swinventory,
+                  upstream-check,
+                  license-check
                   ]
         branch: [dunfell, gatesgarth, hardknott, master]
 
