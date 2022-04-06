@@ -13,6 +13,7 @@ A collection of build utils to be used with YOCTO
 | hashdog              | warn about variables in function which corrupt sstate hashing                                             | [docu](docs/hashdog.md)              |
 | kconfig-sanity       | check if .cfg-fragements are applied correctly in kconfig-based systems                                   | [docu](docs/kconfig-sanity.md)       |
 | layer-sanity         | check that variables are not altered by bbappends                                                         | [docu](docs/layer-sanity.md)         |
+| license-check        | Automatically check if LIC_FILES_CHKSUM contains **all** license files                                    | [docu](docs/license-check.md)        |
 | license-report       | generates a single document export of all the license texts used in an image                              | [docu](docs/license_report.md)       |
 | python-package-ident | automatically determine RDEPENDS of python packages                                                       | [docu](docs/python-package-ident.md) |
 | python-speedups      | speedup python on the target system using some hackery                                                    | [docu](docs/python-speedups.md)      |
