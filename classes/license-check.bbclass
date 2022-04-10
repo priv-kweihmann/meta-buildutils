@@ -29,7 +29,7 @@ def license_check_get_files(d):
 
 
 python do_license_check() {
-    _known_settings = [x.split(";")[0].replace("file://", "", 1) for x in d.getVar("LIC_FILES_CHKSUM").split(" ") if x]
+    _known_settings = [x.split(";")[0].replace("file://", "", 1) for x in (d.getVar("LIC_FILES_CHKSUM") or '').split(" ") if x]
     if not _known_settings:
         return
 
