@@ -21,7 +21,7 @@ def license_check_get_files(d):
             _fullname = os.path.join(root, f)
             if not os.path.isfile(_fullname) or os.path.islink(_fullname):
                 continue
-            _filename = os.path.relpath(_fullname, root)
+            _filename = os.path.relpath(_fullname, d.getVar("S"))
             if (re.match(r"^.*-*\.*licen[sc]e(s)*-*\.*.*", f, re.IGNORECASE)
                 or re.match(r"^.*-*\.*copying-*\.*.*", f, re.IGNORECASE)):
                 res.add(_filename)            
