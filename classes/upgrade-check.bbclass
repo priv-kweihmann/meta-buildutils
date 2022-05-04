@@ -43,4 +43,4 @@ python do_upgrade_check() {
 }
 do_upgrade_check[network] = '1'
 
-addtask do_upgrade_check before do_build
+addtask do_upgrade_check before do_package do_install do_deploy
