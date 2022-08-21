@@ -22,10 +22,10 @@ except ImportError:
 
 def get_ignores_file(args):
     _res = set(args.ignore)
-    if os.path.exists(os.path.join(args.layerdir, ".unusedignore")):
-        with open(os.path.join(args.layerdir, ".unusedignore")) as i:
+    if os.path.exists(os.path.join(args.layerdir, "../.unusedignore")):
+        with open(os.path.join(args.layerdir, "../.unusedignore")) as i:
             for _path in json.load(i):
-                _res.add(os.path.join(args.layerdir, _path))
+                _res.add(_path)
     return list(_res)
 
 def create_parser():
@@ -44,10 +44,10 @@ def create_parser():
 def walk_dir(args):
     _res = {}
     _alias = {}
-    for root, dirs, files in os.walk(args.layerdir):
+    for root, _, files in os.walk(args.layerdir):
         for f in files:
             _filepath = os.path.join(root, f)
-            _filename, _ext = os.path.splitext(f)
+            _, _ext = os.path.splitext(f)
             if _ext not in [".bb", ".bbappend", ".bbclass"]:
                 continue
 
