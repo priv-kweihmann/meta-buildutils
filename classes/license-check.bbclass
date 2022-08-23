@@ -29,6 +29,7 @@ def license_check_get_files(d):
 
 
 python do_license_check() {
+    import fnmatch
     _known_settings = [x.split(";")[0].replace("file://", "", 1).strip() for x in (d.getVar("LIC_FILES_CHKSUM") or '').split(" ") if x]
     if not _known_settings:
         return
@@ -41,7 +42,7 @@ python do_license_check() {
         bb.warn("COMMON_LICENSE_DIR is used although license information is present in {}".format(",".join(_found_files)))
 
     for f in _found_files:
-        if f not in _known_settings and f not in _excluded:
+        if f not in _known_settings and not any(fnmatch.fnmatch(f, x) for x in _excluded):
             bb.warn("{lic} is not part of LIC_FILES_CHKSUM".format(lic=f))
 }
 
