@@ -26,7 +26,7 @@ jobs:
                   upstream-check,
                   license-check
                   ]
-        branch: [dunfell, gatesgarth, hardknott, master]
+        branch: [dunfell, gatesgarth, hardknott, kirkstone, langdale, master]
 
     steps:
       - uses: actions/checkout@v1
@@ -35,7 +35,10 @@ jobs:
       - name: Update APT
         run: sudo apt-get update
       - name: Install Dependencies
-        run: sudo apt-get -yq --no-install-suggests --no-install-recommends install build-essential chrpath diffstat gawk gcc-multilib git-core libsdl1.2-dev python3 socat texinfo unzip wget xterm
+        run: sudo apt-get -yq --no-install-suggests --no-install-recommends install build-essential chrpath diffstat gawk gcc-multilib git-core libsdl1.2-dev socat texinfo unzip wget xterm
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
       - name: Check out poky
         run: git clone git://git.yoctoproject.org/poky.git/ -b ${{ matrix.branch }} poky
       - name: Setup poky
