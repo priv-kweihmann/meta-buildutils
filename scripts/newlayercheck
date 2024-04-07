@@ -18,12 +18,9 @@ from packaging import version
 try:
     from oelint_parser.cls_item import Variable
     from oelint_parser.cls_stash import Stash
-    from oelint_parser.helper_files import expand_term
-    from oelint_parser.helper_files import guess_recipe_name
-    from oelint_parser.helper_files import guess_recipe_version
 except ImportError:
     sys.stderr.write(
-        "Can't import 'oelint-parser'. Please run 'pip install oelint-parser' to enable this script here\n")
+        "Can't import 'oelint-parser'. Please run 'pip install oelint-parser>=3.0' to enable this script here\n")
     sys.exit(-1)
 
 FILES_EXCEPTIONS = [
@@ -64,10 +61,11 @@ def __get_layer_name(_args, path):
 
 
 def __get_recipe_info(_args, recipe):
-    _name = guess_recipe_name(recipe)
+    
 
     _stash = Stash(quiet=True)
     _stash.AddFile(recipe)
+    _name = _stash.GuessRecipeName(recipe)
 
     res = {}
 
@@ -84,9 +82,9 @@ def __get_recipe_info(_args, recipe):
     _x = _stash.GetItemsFor(filename=recipe, classifier=Variable.CLASSIFIER,
                             attribute=Variable.ATTR_VAR, attributeValue="PN")
     if not _x:
-        _x = guess_recipe_version(recipe)
+        _x = _stash.GuessRecipeVersion(recipe)
     else:
-        _x = expand_term(_stash, recipe, _x[0].VarValueStripped)
+        _x = _stash.ExpandTerm(recipe, _x[0].VarValueStripped)
     _pv = _x
 
     # First hard set to a class recipe
