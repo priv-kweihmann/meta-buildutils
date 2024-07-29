@@ -37,7 +37,12 @@ python do_upgrade_check() {
 
     dc.setVar("SRC_URI", _new)
 
-    _, status, _, _, _, _, _ = _get_recipe_upgrade_status(dc)
+    tmp = _get_recipe_upgrade_status(dc)
+
+    if isinstance(tmp, dict):
+        status = tmp.get('status', 'UNKNOWN')
+    else:
+        _, status, _, _, _, _, _ = tmp
     if status not in ["MATCH", "UPDATE", "KNOWN_BROKEN", "UNKNOWN"]:
         bb.warn("UPSTREAM_CHECK is broken [status = %s], please check variables UPSTREAM_CHECK_REGEX, UPSTREAM_CHECK_URI and others" % status)
 }
