@@ -26,7 +26,7 @@ jobs:
                   upstream-check,
                   license-check
                   ]
-        branch: [dunfell, gatesgarth, hardknott, kirkstone, langdale, master]
+        branch: [dunfell, gatesgarth, hardknott, kirkstone, langdale, mickledore, nanbield, scarthgap, styhead, master]
 
     steps:
       - uses: actions/checkout@v1
