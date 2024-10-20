@@ -25,9 +25,10 @@ A collection of build utils to be used with YOCTO
 
 ## Available scripts
 
-| script           | summary                                                             | documentation                           |
-| ---------------- | ------------------------------------------------------------------- | --------------------------------------- |
-| bitbake-listvars | list all defined bitbake variable                                   | [docu](docs/scripts-bitbakelistvars.md) |
-| dot2tree         | create filterable trees from recipe info                            | [docu](docs/scripts-dot2tree.md)        |
-| newlayercheck    | check a layer for possible corruptions/changes of an existing stack | [docu](docs/scripts-newlayercheck.md)   |
-| unused           | identify unused recipes in a layer                                  | [docu](docs/scripts-unused.md)          |
+| script            | summary                                                             | documentation                            |
+| ----------------- | ------------------------------------------------------------------- | ---------------------------------------- |
+| bitbake-listflags | list all defined flgas of a bitbake variable                        | [docu](docs/scripts-bitbakelistflags.md) |
+| bitbake-listvars  | list all defined bitbake variable                                   | [docu](docs/scripts-bitbakelistvars.md)  |
+| dot2tree          | create filterable trees from recipe info                            | [docu](docs/scripts-dot2tree.md)         |
+| newlayercheck     | check a layer for possible corruptions/changes of an existing stack | [docu](docs/scripts-newlayercheck.md)    |
+| unused            | identify unused recipes in a layer                                  | [docu](docs/scripts-unused.md)           |
