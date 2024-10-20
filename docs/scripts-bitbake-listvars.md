@@ -7,5 +7,5 @@ List all defined variables
 From a setup OE/Yocto build
 
 ```shell
-<path to checkout>/scripts/bitbake-listvars
+<path to checkout>/scripts/bitbake-listvars $(which bitbake)
 ```
