@@ -1,0 +1,230 @@
+#!/usr/bin/env python3
+
+# SPDX-License-Identifier: BSD-2-Clause
+# Copyright (c) 2025, Konrad Weihmann
+
+# This scripts converts graphs like task-depends.dot
+# into filterable tree printed to console
+
+import argparse
+import os
+import re
+import sys
+import textwrap
+from collections import defaultdict
+from typing import List, Tuple
+import logging
+
+logging.basicConfig(stream=sys.stderr, level=logging.INFO)
+
+try:
+    from anytree import Node, PreOrderIter, RenderTree
+except ImportError:
+    sys.stderr.write(
+        "Can't import 'anytree'. Please run 'pip install anytree' to enable this script here\n")
+    sys.exit(-1)
+
+
+class CustomArgparserHelpFormatter(argparse.RawTextHelpFormatter, argparse.ArgumentDefaultsHelpFormatter):
+    pass
+
+
+sys.setrecursionlimit(20000)
+
+def create_parser():
+    parser = argparse.ArgumentParser(
+        formatter_class=CustomArgparserHelpFormatter,
+        prog='oetree',
+        description='print nice trees out of bitbake information',
+        epilog=textwrap.dedent('''
+        in mode taskdepends you could run
+
+        oetree --mode=taskdepends --endnode=kern-tools-native task-depends.dot core-image-minimal
+
+        which results in
+
+            core-image-minimal
+            ├── busybox
+                └── kern-tools-native
+        
+        in mode pkgdepend you could run
+
+        oetree --mode=pkgdepend --endnode=ncurses-libtinfo /path/to/your/workspace/tmp/pkgdata/<arch>/runtime-reverse python3-core
+
+        which results in
+
+            python3-core
+            └── readline
+                └── ncurses-libtinfo
+
+        or you can specify an image manifest
+
+        ./oetree --mode=pkgdepend --endnode=dbus-tools /path/to/your/workspace/tmp/pkgdata/<arch>/runtime-reverse /path/to/your/workspace/tmp/deploy/images/<arch>/<image name>.manifest 
+
+        which results in
+
+            packagegroup-core-boot
+            └── systemd
+                └── dbus
+                    └── dbus-tools
+            systemd
+            └── dbus
+                └── dbus-tools
+            systemd-compat-units
+            └── systemd
+                └── dbus
+                    └── dbus-tools
+            systemd-extra-utils
+            └── systemd
+                └── dbus
+                    └── dbus-tools
+            systemd-vconsole-setup
+            └── systemd
+                └── dbus
+                    └── dbus-tools
+                '''))
+    parser.add_argument(
+        "--mode", choices=["taskdepends", "pkgdepend"], default="taskdepends", help="mode to operate in")
+    parser.add_argument("--endnode", default=None, help="Stop tree at")
+    parser.add_argument("--renderdepth", type=int,
+                        default=1000000000, help="Limit render depth")
+    parser.add_argument(
+        "input", help="Path to input files [depends on mode selected]")
+    parser.add_argument(
+        "root", help="Name of the root node or path to an image manifest")
+    return parser.parse_args()
+
+
+def explode_root(args) -> Tuple[List[str], List[str]]:
+    if os.path.isfile(args.root):
+        # treat it like an image manifest
+        # base-files qemux86_64 3.0.14-r89
+        with open(args.root) as i:
+            return ([x.group("pn") for x in re.finditer(r'^(?P<pn>.*?)\s+.*', i.read(), re.MULTILINE)], os.path.basename(args.root))
+    return ([args.root], os.path.basename(args.root))
+
+
+def _captain_planet(args, _dict):
+    logging.info('Processing...')
+
+    rootnodes, prefix = explode_root(args)
+
+    root = Node(prefix)
+
+    def find_node(name: str, parent: str, children: List[str]) -> Node:
+
+        def create_node_with_size(name, parent, path=[]):
+            res = Node(name, parent)
+            res.children = tuple([create_node_with_size(x, res, path + [x]) for x in _dict.get(name, {}).get('deps', []) if x and x not in path])
+            setattr(res, 'pkgsize',  _dict.get(name, {}).get('size', 0))
+            return res
+
+        parent: Node = next(
+            (node for node in PreOrderIter(root) if node.name == parent), None)
+        node: Node = next(
+            (node for node in PreOrderIter(root) if node.name == name), None)
+        if node is None:
+            node = create_node_with_size(name, parent)
+        else:
+            node.children = tuple(
+                list(node.children) + [create_node_with_size(x, parent) for x in children])
+        return node
+
+    for node in rootnodes:
+        find_node(node, prefix, _dict.get(node, {}).get('deps', []))
+
+    def filter_children(node: Node, filter_):
+        if node.children:
+            node.children = [x for x in node.children if filter_children(
+                x, filter_) or x.children]
+        return filter_(node)
+
+    filter_children(root, filter_=lambda node: node.name in (
+        args.endnode or '') or not args.endnode)
+
+    logging.info('Done')
+    return root
+
+
+def read_pkg_data(_file):
+    _dict = defaultdict(dict)
+    with open(_file) as i:
+        cnt = i.read()
+        _deps = set()
+        _pkg_name = ''
+        _alias = ''
+        _size = 0
+        for m in re.finditer(r'^PKG:.*:\s+(?P<pn>.*)', cnt, re.MULTILINE):
+            _pkg_name = m.group("pn")
+        for m in re.finditer(r'^PKGSIZE:.*:\s+(?P<number>.*)', cnt, re.MULTILINE):
+            _size = int(m.group("number").strip())
+        for m in re.finditer(r'^(RDEPENDS|RRECOMMENDS):(?P<pn>.*):\s+(?P<deps>.*)', cnt, re.MULTILINE):
+            deps = re.sub(r'\([<>=]+\s+[a-zA-z0-9.+-]+\)', '', m.group("deps"))
+            _deps.update(x for x in deps.split(" ") if x and '(' not in x)
+            _alias = m.group('pn')
+        _dict[_pkg_name] = {'deps': sorted(_deps), 'size': _size}
+        if _alias:
+            _dict[_alias] = {'deps': sorted(_deps), 'size': _size}
+    return _dict
+
+
+def _parse_input_taskdepends(args):
+    _dict = defaultdict(dict)
+    _pattern = r"^\"(?P<target>.*?)\..*\"\s+->\s+\"(?P<depends>.*?)\..*\""
+    with open(args.input) as i:
+        for m in re.finditer(_pattern, i.read(), re.MULTILINE):
+            if m.group("target") == m.group("depends"):
+                continue
+            if m.group("target") not in _dict:
+                _dict[m.group("target")] = {'deps': set()}
+            _dict[m.group("target")]['deps'].add(m.group("depends"))
+    return _dict
+
+
+def _parse_input_pkgdepends(args):
+    _dict = defaultdict(dict)
+    if not os.path.isdir(args.input) or not args.input.endswith("runtime-reverse"):
+        logging.error(
+            "you need to provide the '${PKGDATA_DIR}/runtime-reverse' path as input")
+        sys.exit(1)
+    # check that input is a dir ending on runtime-reverse
+    logging.info('Reading input data...')
+    for root, _, files in os.walk(args.input):
+        for f in sorted(files):
+            _dict.update(read_pkg_data(os.path.join(root, f)))
+    logging.info('Done')
+    return _dict
+
+
+def _sum_pkgsize(node: Node) -> int:
+    if node is None or not hasattr(node, 'pkgsize'):
+        return 0
+    return node.pkgsize + sum(_sum_pkgsize(x) for x in node.children)
+
+
+def _byte_format(value):
+    for unit in ('', 'k', 'M', 'G', 'T'):
+        if abs(value) < 1024.0:
+            return f"{value:3.1f}{unit}"
+        value /= 1024.0
+    return f'{value:.1f}'
+
+
+def main():
+    _args = create_parser()
+    if _args.mode == "taskdepends":
+        _raw = _parse_input_taskdepends(_args)
+        with_numbers = False
+    elif _args.mode == "pkgdepend":
+        _raw = _parse_input_pkgdepends(_args)
+        with_numbers = True
+    for pre, _, node in RenderTree(_captain_planet(_args, _raw), maxlevel=_args.renderdepth):
+        if with_numbers and hasattr(node, 'pkgsize'):
+            print("%s%s [%s - %s]" % (pre, node.name,
+                  _byte_format(node.pkgsize), _byte_format(_sum_pkgsize(node))))
+        else:
+            print("%s%s" % (pre, node.name))
+
+
+if __name__ == '__main__':
+    main()
