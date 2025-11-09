@@ -29,30 +29,30 @@ jobs:
         branch: [dunfell, gatesgarth, hardknott, kirkstone, langdale, mickledore, nanbield, scarthgap, styhead, master]
 
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v5
         with:
           ref: master
       - name: Update APT
         run: sudo apt-get update
       - name: Install Dependencies
         run: sudo apt-get -yq --no-install-suggests --no-install-recommends install build-essential chrpath diffstat gawk gcc-multilib git-core libsdl1.2-dev socat texinfo unzip wget xterm
-      - uses: actions/setup-python@v4
-        with:
-          python-version: '3.9'
-      - name: Check out poky
-        run: git clone git://git.yoctoproject.org/poky.git/ -b ${{ matrix.branch }} poky
+      - uses: actions/setup-python@v6
+      - name: Check out oe-core
+        run: git clone https://github.com/openembedded/openembedded-core.git -b ${{ matrix.branch }} openembedded-core
+      - name: Check out bitbake
+        run: git clone https://github.com/openembedded/bitbake.git bitbake
       - name: Setup poky
-        run: source poky/oe-init-build-env
+        run: source openembedded-core/oe-init-build-env
       - name: add meta-buildutils
         run: |
-          source poky/oe-init-build-env
+          source openembedded-core/oe-init-build-env
           bitbake-layers add-layer $(pwd)/..
       - name: prepare local.conf
         run: |
-          source poky/oe-init-build-env
+          source openembedded-core/oe-init-build-env
           echo 'INHERIT += "${{ matrix.testset }}"' >> conf/local.conf
       - name: Bitbake parse
         run: |
-          source poky/oe-init-build-env
+          source openembedded-core/oe-init-build-env
           bitbake -p
           
