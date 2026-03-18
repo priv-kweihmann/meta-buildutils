@@ -26,7 +26,7 @@ jobs:
                   upstream-check,
                   license-check
                   ]
-        branch: [kirkstone, scarthgap]
+        branch: [whinlatter, master]
 
     steps:
       - uses: actions/checkout@v5
