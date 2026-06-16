@@ -37,7 +37,10 @@ python do_upgrade_check() {
 
     dc.setVar("SRC_URI", _new)
 
-    tmp = _get_recipe_upgrade_status(dc)
+    try:
+        tmp = _get_recipe_upgrade_status(dc)
+    except TypeError:
+        tmp = _get_recipe_upgrade_status(dc, False)
 
     if isinstance(tmp, dict):
         status = tmp.get('status', 'UNKNOWN')
